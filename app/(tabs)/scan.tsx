@@ -1,3 +1,4 @@
+import { useIsFocused } from '@react-navigation/native';
 import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const router = useRouter();
+  const isFocused = useIsFocused();
 
   if (!permission) {
     return <View />;
@@ -74,27 +76,29 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ["qr"],
-        }}
-      >
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-            <Text style={styles.text}>Flip Camera</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.overlay}>
-          <Text style={{ color: 'white', textAlign: 'center', marginTop: 50, fontSize: 18, fontWeight: 'bold' }}>Scan SolTip QR Code</Text>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ width: 250, height: 250, borderWidth: 2, borderColor: 'white', borderRadius: 20 }} />
+      {isFocused && (
+        <CameraView
+          style={styles.camera}
+          facing={facing}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+        >
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+              <Text style={styles.text}>Flip Camera</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={{ color: 'white', textAlign: 'center', marginBottom: 50 }}>Point camera at QR code</Text>
-        </View>
-      </CameraView>
+          <View style={styles.overlay}>
+            <Text style={{ color: 'white', textAlign: 'center', marginTop: 50, fontSize: 18, fontWeight: 'bold' }}>Scan SolTip QR Code</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ width: 250, height: 250, borderWidth: 2, borderColor: 'white', borderRadius: 20 }} />
+            </View>
+            <Text style={{ color: 'white', textAlign: 'center', marginBottom: 50 }}>Point camera at QR code</Text>
+          </View>
+        </CameraView>
+      )}
     </View>
   );
 }
