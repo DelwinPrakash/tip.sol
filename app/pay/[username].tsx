@@ -1,20 +1,19 @@
-import { createV1, mplCore } from '@metaplex-foundation/mpl-core';
-import { createNoopSigner, generateSigner, publicKey } from '@metaplex-foundation/umi';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { toWeb3JsInstruction } from '@metaplex-foundation/umi-web3js-adapters';
+import { useAuthorization } from '@/components/providers/AuthorizationProvider';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function PayScreen() {
+    const { authorizeSession } = useAuthorization();
     const colorScheme = useColorScheme() ?? 'light';
+    const router = useRouter();
+    
     const theme = Colors[colorScheme];
     const { username, address, name, bio, avatar } = useLocalSearchParams();
-    const router = useRouter();
 
     const [amount, setAmount] = useState('');
     const [message, setMessage] = useState('');
@@ -24,8 +23,6 @@ export default function PayScreen() {
     const recipientAddress = Array.isArray(address) ? address[0] : address;
     const recipientAvatar = Array.isArray(avatar) ? avatar[0] : avatar;
     const recipientBio = Array.isArray(bio) ? bio[0] : bio;
-
-    const umi = createUmi(clusterApiUrl('devnet')).use(mplCore());
 
     const handleSendTip = async () => {
         if (!amount || isNaN(parseFloat(amount))) {
@@ -44,14 +41,14 @@ export default function PayScreen() {
             const lamports = parseFloat(amount) * LAMPORTS_PER_SOL;
 
             await transact(async (wallet: Web3MobileWallet) => {
-                const { accounts } = await wallet.authorize({
-                    cluster: 'devnet',
-                    identity: {
-                        name: 'SolTip',
-                        uri: 'https://soltip.app',
-                    }
-                });
-                const senderPublicKey = new PublicKey(accounts[0].address);
+                const account = await authorizeSession(wallet);
+                const senderPublicKey = account.publicKey;
+
+                const balance = await connection.getBalance(senderPublicKey);
+                if (balance < lamports) {
+                    Alert.alert('Insufficient Funds', 'You do not have enough SOL for this transaction.');
+                    return;
+                }
 
                 const latestBlockhash = await connection.getLatestBlockhash();
 
@@ -68,58 +65,52 @@ export default function PayScreen() {
                     })
                 );
 
-                try {
-                    const assetSigner = generateSigner(umi);
-
-                    const builder = createV1(umi, {
-                        asset: assetSigner,
-                        name: 'SolTip Supporter',
-                        uri: 'https://arweave.net/1234',
-                        payer: createNoopSigner(publicKey(senderPublicKey.toBase58())),
-                        // owner: createNoopSigner(publicKey(senderPublicKey.toBase58())),
-                        authority: createNoopSigner(publicKey(senderPublicKey.toBase58())),
-                    });
-
-                    const umiInstructions = builder.getInstructions();
-
-                    for (const ix of umiInstructions) {
-                        const web3Ix = toWeb3JsInstruction(ix);
-                        transaction.add(web3Ix);
-                    }
-
-                    transaction.partialSign({
-                        publicKey: new PublicKey(assetSigner.publicKey),
-                        secretKey: assetSigner.secretKey
-                    });
-                } catch (nftError) {
-                    console.warn('NFT construction failed, proceeding with just tip:', nftError);
-                }
-
                 const signedTransactions = await wallet.signTransactions({
                     transactions: [transaction],
                 });
 
-                const signedTx = signedTransactions[0];
+                const signature = await connection.sendRawTransaction(
+                    signedTransactions[0].serialize(),
+                    {
+                        skipPreflight: false,
+                        preflightCommitment: 'confirmed',
+                    }
+                );
 
-                const signatures = await wallet.signAndSendTransactions({
-                    transactions: [transaction],
-                });
+                const confirmation = await connection.confirmTransaction(
+                    signature,
+                    'confirmed'
+                );
 
-                console.log('Signature:', signatures[0]);
-                Alert.alert('Success', `Tip sent! Signature: ${signatures[0].slice(0, 8)}...`);
+                if (confirmation.value.err) {
+                    throw new Error('Transaction failed to confirm');
+                }
+
+                console.log('Signature:', signature);
+                Alert.alert('Success', `Tip sent! Signature: ${signature.slice(0, 8)}...`);
                 router.replace('/(tabs)');
             });
 
         } catch (error: any) {
             console.error('Tip failed:', error);
-            Alert.alert('Payment Failed', error.message || 'Unknown error');
+            
+            let errorMessage = 'Unknown error';
+            if (error.message?.includes('TimeoutException')) {
+                errorMessage = 'Wallet took too long to respond. Please try again.';
+            } else if (error.message?.includes('User declined')) {
+                errorMessage = 'Transaction was cancelled.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            Alert.alert('Payment Failed', errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, alignItems: 'center', backgroundColor: theme.background }}>
                 <View style={{ alignItems: 'center', marginBottom: 30 }}>
                     <Image
