@@ -3,6 +3,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -11,9 +12,9 @@ export default function PayScreen() {
     const { authorizeSession } = useAuthorization();
     const colorScheme = useColorScheme() ?? 'light';
     const router = useRouter();
-    
+    const { address, name, bio, avatar, tipTitle, tipDescription, tipTarget } = useLocalSearchParams();
+
     const theme = Colors[colorScheme];
-    const { username, address, name, bio, avatar } = useLocalSearchParams();
 
     const [amount, setAmount] = useState('');
     const [message, setMessage] = useState('');
@@ -23,6 +24,10 @@ export default function PayScreen() {
     const recipientAddress = Array.isArray(address) ? address[0] : address;
     const recipientAvatar = Array.isArray(avatar) ? avatar[0] : avatar;
     const recipientBio = Array.isArray(bio) ? bio[0] : bio;
+
+    const tTitle = Array.isArray(tipTitle) ? tipTitle[0] : tipTitle;
+    const tDescription = Array.isArray(tipDescription) ? tipDescription[0] : tipDescription;
+    const tTarget = Array.isArray(tipTarget) ? tipTarget[0] : tipTarget;
 
     const handleSendTip = async () => {
         if (!amount || isNaN(parseFloat(amount))) {
@@ -93,7 +98,7 @@ export default function PayScreen() {
 
         } catch (error: any) {
             console.error('Tip failed:', error);
-            
+
             let errorMessage = 'Unknown error';
             if (error.message?.includes('TimeoutException')) {
                 errorMessage = 'Wallet took too long to respond. Please try again.';
@@ -102,7 +107,7 @@ export default function PayScreen() {
             } else if (error.message) {
                 errorMessage = error.message;
             }
-            
+
             Alert.alert('Payment Failed', errorMessage);
         } finally {
             setLoading(false);
@@ -111,10 +116,10 @@ export default function PayScreen() {
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, alignItems: 'center', backgroundColor: theme.background }}>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
                 <View style={{ alignItems: 'center', marginBottom: 30 }}>
                     <Image
-                        source={{ uri: recipientAvatar || 'https://via.placeholder.com/150' }}
+                        source={{ uri: recipientAvatar || 'https://picsum.photos/seed/random1/100/100' }}
                         style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 15 }}
                     />
                     <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientName || 'Unknown Creator'}</Text>
@@ -123,6 +128,26 @@ export default function PayScreen() {
                         <Text style={{ fontSize: 12, color: theme.icon, marginRight: 5 }}>{recipientAddress?.slice(0, 4)}...{recipientAddress?.slice(-4)}</Text>
                     </View>
                 </View>
+
+                {tTitle ? (
+                    <LinearGradient
+                        colors={['#0a7ea4', '#004f69']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ width: '100%', marginBottom: 20, padding: 25, borderRadius: 25, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+                    >
+                        <Text style={{ fontSize: 14, color: '#E0F7FA', fontWeight: '600', letterSpacing: 1, marginBottom: 5 }}>CONTRIBUTE TO GOAL</Text>
+                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>{tTitle}</Text>
+                        {tDescription ? <Text style={{ color: '#E0F7FA', marginBottom: 15 }}>{tDescription}</Text> : null}
+
+                        <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <View>
+                                <Text style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</Text>
+                                <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{tTarget} SOL</Text>
+                            </View>
+                        </View>
+                    </LinearGradient>
+                ) : null}
 
                 <View style={{ width: '100%', marginBottom: 20 }}>
                     <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Enter Amount (SOL)</Text>
