@@ -1,45 +1,53 @@
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Account } from '@/components/providers/AuthorizationProvider';
+import { useConnection } from '@/components/providers/ConnectionProvider';
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Connection, LAMPORTS_PER_SOL, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import QRCode from 'react-native-qrcode-svg';
-import { useAuth } from '../../context/AuthContext';
 
-export default function DashboardScreen() {
+export default function HomeScreen(){
   const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
   const { selectedAccount, userProfile } = useAuth();
+  const { connection } = useConnection();
+  
+  const theme = Colors[colorScheme];
+
   const [balance, setBalance] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
-  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
-  const fetchBalance = async () => {
-    if (!selectedAccount) return;
+  const fetchBalance = useCallback(async (account: Account) => {
     try {
-      const publicKey = new PublicKey(selectedAccount.address);
-      const bal = await connection.getBalance(publicKey);
-      setBalance(bal / LAMPORTS_PER_SOL);
-    } catch (error) {
-      console.error('Error fetching balance:', error);
+      const fetchedBalance = await connection.getBalance(account.publicKey);
+      setBalance(fetchedBalance / LAMPORTS_PER_SOL);
+    } catch (e) {
+      console.error('Failed to fetch balance', e);
     }
-  };
+  }, [connection],
+  );
+
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchBalance();
+    if (selectedAccount) {
+      await fetchBalance(selectedAccount);
+    }
     setRefreshing(false);
-  }, [selectedAccount]);
+  }, [selectedAccount, fetchBalance]);
 
   useEffect(() => {
-    fetchBalance();
-  }, [selectedAccount]);
+    if (selectedAccount) {
+      fetchBalance(selectedAccount);
+    }
+  }, [selectedAccount, fetchBalance]);
 
   const tipLink = userProfile && selectedAccount
     ? `https://soltip.app/pay/${userProfile.name.replace(/\s+/g, '').toLowerCase()}?address=${selectedAccount.address}&name=${encodeURIComponent(userProfile.name)}&bio=${encodeURIComponent(userProfile.bio)}&avatar=${encodeURIComponent(userProfile.avatarUri)}`
@@ -54,14 +62,13 @@ export default function DashboardScreen() {
       </View>
     );
   }
-
   return (
     <ScrollView
       contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, backgroundColor: theme.background }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />}
     >
       {/* <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 32, fontWeight: '800', color: theme.text }}>Hellos, {userProfile?.name || 'Creator'} 👋</Text>
+        <Text style={{ fontSize: 32, fontWeight: '800', color: theme.text }}>Hello, {userProfile?.name || 'Creator'} 👋</Text>
         <Text style={{ color: theme.icon, fontSize: 16 }}>Welcome back to your dashboard.</Text>
       </View> */}
 
@@ -137,15 +144,13 @@ export default function DashboardScreen() {
           <Text style={{ color: theme.icon, fontSize: 12 }}>1h ago</Text>
         </View>
       </View>
-
     </ScrollView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
-    // backgroundColor removed here, applied inline or via theme
     padding: 15,
     borderRadius: 20,
     marginHorizontal: 8,
