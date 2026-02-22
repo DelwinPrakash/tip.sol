@@ -1,19 +1,41 @@
-import { Stack } from 'expo-router';
-import { useState } from 'react';
-import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-
+import { useConnection } from '@/components/providers/ConnectionProvider';
+import { useAuth } from '@/context/AuthContext';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Stack, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProfileScreen() {
+    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
-    const theme = Colors[colorScheme];
+    const { connection } = useConnection();
     const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, isLoading } = useAuth();
+    
+    const theme = Colors[colorScheme];
     const [name, setName] = useState(userProfile?.name || '');
     const [bio, setBio] = useState(userProfile?.bio || '');
     const [avatarUri, setAvatarUri] = useState(userProfile?.avatarUri || 'https://picsum.photos/seed/random1/100/100');
     const [isEditing, setIsEditing] = useState(!userProfile);
+    const [showMenu, setShowMenu] = useState(false);
+    const [balance, setBalance] = useState<number | null>(null);
+
+    useEffect(() => {
+        const fetchBalance = async () => {
+            if (selectedAccount) {
+                try {
+                    const fetchedBalance = await connection.getBalance(selectedAccount.publicKey);
+                    setBalance(fetchedBalance / LAMPORTS_PER_SOL);
+                } catch (e) {
+                    console.error('Failed to fetch balance', e);
+                }
+            }
+        };
+        fetchBalance();
+    }, [selectedAccount, connection]);
 
     const handleSaveProfile = async () => {
         if (!name.trim()) return;
@@ -36,6 +58,7 @@ export default function ProfileScreen() {
                 <Text style={{ textAlign: 'center', marginBottom: 30, color: theme.text }}>Connect your Solana wallet to start receiving tips.</Text>
                 <TouchableOpacity
                     onPress={handleConnect}
+                    disabled={isLoading}
                     style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10 }}
                 >
                     <Text style={{ color: 'white', fontWeight: 'bold' }}>Connect Wallet</Text>
@@ -44,69 +67,118 @@ export default function ProfileScreen() {
         );
     }
 
+    const handlePay = () => {
+        console.log('Pay');
+        router.push({
+            pathname: '/pay/[username]',
+            params: { username: "delwin", address: "HrGu9SJ19ChfBkJvLqmWM2tavmx3LnmHwwhsXiV1ntie", name: "delwin", bio: "bio", avatar: "avatar" }
+        });
+    };
+
     return (
-        <View style={{ flex: 1, padding: 20, paddingTop: 60, backgroundColor: theme.background }}>
+        <ScrollView
+            style={{ flex: 1, backgroundColor: theme.background }}
+            contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, paddingBottom: 100 }}
+        >
             <Stack.Screen options={{ title: 'Profile', headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.text }} />
-            <View style={{ alignItems: 'center', marginBottom: 30 }}>
-                <Image source={{ uri: avatarUri }} style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 10 }} />
-                {isEditing ? (
-                    <TouchableOpacity onPress={() => {/* Image picker implementation needed */ }}>
-                        <Text style={{ color: theme.tint }}>Change Photo</Text>
-                    </TouchableOpacity>
-                ) : null}
-            </View>
 
-            {isEditing ? (
-                <View>
-                    <Text style={{ marginBottom: 5, color: theme.text }}>Name</Text>
-                    <TextInput
-                        value={name}
-                        onChangeText={setName}
-                        style={{ borderWidth: 1, borderColor: theme.border, padding: 10, borderRadius: 5, marginBottom: 15, color: theme.text, backgroundColor: theme.background }}
-                        placeholder="Your Name"
-                        placeholderTextColor={theme.icon}
-                    />
-                    <Text style={{ marginBottom: 5, color: theme.text }}>Bio</Text>
-                    <TextInput
-                        value={bio}
-                        onChangeText={setBio}
-                        style={{ borderWidth: 1, borderColor: theme.border, padding: 10, borderRadius: 5, marginBottom: 15, color: theme.text, backgroundColor: theme.background }}
-                        placeholder="Tell us about yourself"
-                        placeholderTextColor={theme.icon}
-                        multiline
-                    />
-                    <TouchableOpacity
-                        onPress={handleSaveProfile}
-                        style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10, alignItems: 'center' }}
-                    >
-                        <Text style={{ color: 'white', fontWeight: 'bold' }}>Save Profile</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <View accessible={true}>
-                    <Text style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: theme.text }}>{userProfile?.name}</Text>
-                    <Text style={{ textAlign: 'center', color: theme.icon, marginBottom: 20 }}>{userProfile?.bio}</Text>
+            <View style={{ position: 'relative', zIndex: 10 }}>
+                {/* 3-Dot Menu Button */}
+                {!isEditing && userProfile && (
+                    <View style={{ alignItems: 'flex-end', marginBottom: -20, zIndex: 20 }}>
+                        <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={{ padding: 10 }}>
+                            <IconSymbol size={28} name="ellipsis" color={theme.text} />
+                        </TouchableOpacity>
 
-                    <View style={{ backgroundColor: theme.card, padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                        <Text style={{ fontWeight: 'bold', marginBottom: 5, color: theme.text }}>Your Tip Link:</Text>
-                        <Text selectable style={{ color: theme.text }}>soltip.app/{userProfile?.name.replace(/\s+/g, '').toLowerCase()}</Text>
+                        {showMenu && (
+                            <View style={{ position: 'absolute', top: 40, right: 10, backgroundColor: theme.card, borderRadius: 10, padding: 10, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, minWidth: 150 }}>
+                                <TouchableOpacity
+                                    style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.border }}
+                                    onPress={() => {
+                                        setIsEditing(true);
+                                        setShowMenu(false);
+                                    }}
+                                >
+                                    <Text style={{ color: theme.text, fontWeight: 'bold' }}>Edit Profile</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ paddingVertical: 10 }}
+                                    onPress={() => {
+                                        handleDisconnect();
+                                        setShowMenu(false);
+                                    }}
+                                >
+                                    <Text style={{ color: 'red', fontWeight: 'bold' }}>Disconnect Wallet</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
+                )}
 
-                    <TouchableOpacity
-                        onPress={() => setIsEditing(true)}
-                        style={{ backgroundColor: theme.border, padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 }}
-                    >
-                        <Text style={{ fontWeight: 'bold', color: theme.text }}>Edit Profile</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={handleDisconnect}
-                        style={{ padding: 15, alignItems: 'center' }}
-                    >
-                        <Text style={{ color: 'red' }}>Disconnect Wallet</Text>
-                    </TouchableOpacity>
+                <View style={{ alignItems: 'center', marginBottom: 30 }}>
+                    <Image source={{ uri: avatarUri }} style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 10 }} />
+                    {isEditing ? (
+                        <TouchableOpacity onPress={() => {/* Image picker implementation needed */ }}>
+                            <Text style={{ color: theme.tint }}>Change Photo</Text>
+                        </TouchableOpacity>
+                    ) : null}
                 </View>
-            )}
-        </View>
+
+                {isEditing ? (
+                    <View>
+                        <Text style={{ marginBottom: 5, color: theme.text }}>Name</Text>
+                        <TextInput
+                            value={name}
+                            onChangeText={setName}
+                            style={{ borderWidth: 1, borderColor: theme.border, padding: 10, borderRadius: 5, marginBottom: 15, color: theme.text, backgroundColor: theme.background }}
+                            placeholder="Your Name"
+                            placeholderTextColor={theme.icon}
+                        />
+                        <Text style={{ marginBottom: 5, color: theme.text }}>Bio</Text>
+                        <TextInput
+                            value={bio}
+                            onChangeText={setBio}
+                            style={{ borderWidth: 1, borderColor: theme.border, padding: 10, borderRadius: 5, marginBottom: 15, color: theme.text, backgroundColor: theme.background }}
+                            placeholder="Tell us about yourself"
+                            placeholderTextColor={theme.icon}
+                            multiline
+                        />
+                        <TouchableOpacity
+                            onPress={handleSaveProfile}
+                            style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10, alignItems: 'center' }}
+                        >
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Save Profile</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View accessible={true}>
+                        <Text style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: theme.text }}>{userProfile?.name}</Text>
+                        <Text style={{ textAlign: 'center', color: theme.icon, marginBottom: 20 }}>{userProfile?.bio}</Text>
+
+                        <LinearGradient
+                            colors={['#0a7ea4', '#004f69']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{ padding: 25, borderRadius: 25, marginBottom: 30, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+                        >
+                            <Text style={{ color: '#E0F7FA', marginBottom: 5, fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>TOTAL BALANCE</Text>
+                            <Text style={{ color: 'white', fontSize: 42, fontWeight: 'bold' }}>
+                                {balance !== null ? `${balance.toFixed(4)} SOL` : '...'}
+                            </Text>
+                            <Text style={{ color: '#B2EBF2', fontSize: 14, marginTop: 5 }}>≈ $0.00 USD</Text>
+                        </LinearGradient>
+
+                        <View style={{ backgroundColor: theme.card, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                            <Text style={{ fontWeight: 'bold', marginBottom: 5, color: theme.text }}>Your Tip Link:</Text>
+                            <Text selectable style={{ color: theme.text }}>soltip.app/{userProfile?.name.replace(/\s+/g, '').toLowerCase()}</Text>
+                        </View>
+
+                        <TouchableOpacity onPress={handlePay} style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10, alignItems: 'center' }}>
+                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Pay</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </ScrollView>
     );
 }
