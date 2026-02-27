@@ -41,6 +41,9 @@ export default function ScanScreen() {
         const name = params.get('name');
         const bio = params.get('bio');
         const avatar = params.get('avatar');
+        const tipTitle = params.get('tipTitle');
+        const tipDescription = params.get('tipDescription'); 
+        const tipTarget = params.get('tipTarget');
 
         const pathParts = url.pathname.split('/');
         const username = pathParts[pathParts.length - 1];
@@ -48,7 +51,7 @@ export default function ScanScreen() {
         if (address) {
           router.push({
             pathname: '/pay/[username]',
-            params: { username, address, name, bio, avatar }
+            params: { username, address, name, bio, avatar, tipTitle, tipDescription, tipTarget }
           });
 
           setTimeout(() => setScanned(false), 2000);

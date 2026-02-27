@@ -1,12 +1,15 @@
 import { useAuthorization } from '@/components/providers/AuthorizationProvider';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PayScreen() {
     const { authorizeSession } = useAuthorization();
@@ -19,6 +22,7 @@ export default function PayScreen() {
     const [amount, setAmount] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const recipientName = Array.isArray(name) ? name[0] : name;
     const recipientAddress = Array.isArray(address) ? address[0] : address;
@@ -28,6 +32,8 @@ export default function PayScreen() {
     const tTitle = Array.isArray(tipTitle) ? tipTitle[0] : tipTitle;
     const tDescription = Array.isArray(tipDescription) ? tipDescription[0] : tipDescription;
     const tTarget = Array.isArray(tipTarget) ? tipTarget[0] : tipTarget;
+
+    console.log(useLocalSearchParams())
 
     const handleSendTip = async () => {
         if (!amount || isNaN(parseFloat(amount))) {
@@ -92,8 +98,10 @@ export default function PayScreen() {
                 }
 
                 console.log('Signature:', signature);
-                Alert.alert('Success', `Tip sent! Signature: ${signature.slice(0, 8)}...`);
-                router.replace('/(tabs)');
+                setIsSuccess(true);
+                setTimeout(() => {
+                    router.replace('/(tabs)');
+                }, 3000);
             });
 
         } catch (error: any) {
@@ -114,9 +122,25 @@ export default function PayScreen() {
         }
     };
 
+    if (true) {
+        return (
+            <SafeAreaView style={{flex: 1, backgroundColor: theme.background}}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <Animated.View entering={ZoomIn.duration(500)}>
+                        <Ionicons name="checkmark-circle" size={120} color="#4ade80" />
+                    </Animated.View>
+                    <Animated.Text entering={FadeIn.delay(300).duration(500)} style={{ marginTop: 20, fontSize: 24, fontWeight: 'bold', color: theme.text }}>
+                        Payment Successful!
+                    </Animated.Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: theme.background }}>
+            <SafeAreaView>
+            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background}}>
                 <View style={{ alignItems: 'center', marginBottom: 30 }}>
                     <Image
                         source={{ uri: recipientAvatar || 'https://picsum.photos/seed/random1/100/100' }}
@@ -200,6 +224,7 @@ export default function PayScreen() {
                 </TouchableOpacity>
 
             </ScrollView>
+        </SafeAreaView>
         </KeyboardAvoidingView>
     );
 }

@@ -68,7 +68,7 @@ export default function HomeScreen() {
   }, [selectedAccount, fetchBalance]);
 
   const tipLink = userProfile && selectedAccount
-    ? `https://soltip.app/pay/${userProfile.name.replace(/\s+/g, '').toLowerCase()}?address=${selectedAccount.address}&name=${encodeURIComponent(userProfile.name)}&bio=${encodeURIComponent(userProfile.bio)}&avatar=${encodeURIComponent(userProfile.avatarUri)}${tipTarget ? `&tipTitle=${encodeURIComponent(tipTarget.title)}&tipDescription=${encodeURIComponent(tipTarget.description)}&tipTarget=${encodeURIComponent(tipTarget.targetAmount.toString())}` : ''}`
+    ? `https://soltip.app/pay/${userProfile.name.replace(/\s+/g, '').toLowerCase()}?address=${selectedAccount.publicKey}&name=${encodeURIComponent(userProfile.name)}&bio=${encodeURIComponent(userProfile.bio)}&avatar=${encodeURIComponent(userProfile.avatarUri)}${tipTarget ? `&tipTitle=${encodeURIComponent(tipTarget.title)}&tipDescription=${encodeURIComponent(tipTarget.description)}&tipTarget=${encodeURIComponent(tipTarget.targetAmount.toString())}` : ''}`
     : '';
 
 
@@ -80,6 +80,7 @@ export default function HomeScreen() {
       </View>
     );
   }
+
   return (
     <ScrollView
       contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, backgroundColor: theme.background }}
