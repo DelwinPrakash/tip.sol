@@ -24,6 +24,7 @@ const MAPPING = {
   'doc.on.doc': 'content-copy',
   'trash': 'delete',
   'ellipsis': 'more-vert',
+  'clock.fill': 'history'
 } as IconMapping;
 
 /**

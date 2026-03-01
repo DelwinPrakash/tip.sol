@@ -6,9 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert as AlertNative, Image as ImageNative, KeyboardAvoidingView as KeyboardAvoidingViewNative, Platform as PlatformNative, ScrollView as ScrollViewNative, TextInput as TextInputNative, Text as TextNative, TouchableOpacity as TouchableOpacityNative, View as ViewNative } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,7 +16,7 @@ export default function PayScreen() {
     const { authorizeSession } = useAuthorization();
     const colorScheme = useColorScheme() ?? 'light';
     const router = useRouter();
-    const { address, name, bio, avatar, tipTitle, tipDescription, tipTarget } = useLocalSearchParams();
+    const { address, username } = useLocalSearchParams();
 
     const theme = Colors[colorScheme];
 
@@ -24,23 +24,76 @@ export default function PayScreen() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [recipientProfile, setRecipientProfile] = useState<{ name: string, bio: string, avatar: string } | null>(null);
+    const [activeGoal, setActiveGoal] = useState<{ title: string, description: string, targetAmount: number } | null>(null);
+    const [isFetchingData, setIsFetchingData] = useState(true);
 
-    const recipientName = Array.isArray(name) ? name[0] : name;
     const recipientAddress = Array.isArray(address) ? address[0] : address;
-    const recipientAvatar = Array.isArray(avatar) ? avatar[0] : avatar;
-    const recipientBio = Array.isArray(bio) ? bio[0] : bio;
+    const currentUsername = Array.isArray(username) ? username[0] : username;
 
-    const tTitle = Array.isArray(tipTitle) ? tipTitle[0] : tipTitle;
-    const tDescription = Array.isArray(tipDescription) ? tipDescription[0] : tipDescription;
-    const tTarget = Array.isArray(tipTarget) ? tipTarget[0] : tipTarget;
+    useEffect(() => {
+        const fetchRecipientData = async () => {
+            if (!recipientAddress) {
+                setIsFetchingData(false);
+                return;
+            }
+
+            try {
+                // Fetch profile
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('wallet_address', recipientAddress)
+                    .single();
+
+                if (!profileError && profileData) {
+                    setRecipientProfile({
+                        name: profileData.username || profileData.display_name || currentUsername || 'Unknown Creator',
+                        bio: profileData.bio || '',
+                        avatar: profileData.avatar_url || 'https://picsum.photos/seed/random1/100/100'
+                    });
+                } else {
+                    setRecipientProfile({
+                        name: currentUsername || 'Unknown Creator',
+                        bio: '',
+                        avatar: 'https://picsum.photos/seed/random1/100/100'
+                    });
+                }
+
+                // Fetch active goal
+                const { data: goalData, error: goalError } = await supabase
+                    .from('tip_goals')
+                    .select('*')
+                    .eq('wallet_address', recipientAddress)
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (!goalError && goalData) {
+                    setActiveGoal({
+                        title: goalData.title,
+                        description: goalData.description || '',
+                        targetAmount: Number(goalData.target_amount)
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching recipient data:', error);
+            } finally {
+                setIsFetchingData(false);
+            }
+        };
+
+        fetchRecipientData();
+    }, [recipientAddress, currentUsername]);
 
     const handleSendTip = async () => {
         if (!amount || isNaN(parseFloat(amount))) {
-            Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+            AlertNative.alert('Invalid Amount', 'Please enter a valid amount.');
             return;
         }
         if (!recipientAddress) {
-            Alert.alert('Error', 'Recipient address not found.');
+            AlertNative.alert('Error', 'Recipient address not found.');
             return;
         }
 
@@ -56,7 +109,7 @@ export default function PayScreen() {
 
                 const balance = await connection.getBalance(senderPublicKey);
                 if (balance < lamports) {
-                    Alert.alert('Insufficient Funds', 'You do not have enough SOL for this transaction.');
+                    AlertNative.alert('Insufficient Funds', 'You do not have enough SOL for this transaction.');
                     return;
                 }
 
@@ -109,9 +162,8 @@ export default function PayScreen() {
 
                 if (dbError) {
                     console.error('Failed to log tip to database', dbError);
-                    // We don't throw here because the on-chain txn already succeeded
                 } else {
-                    if (tTitle) {
+                    if (activeGoal) {
                         try {
                             const { data: goal } = await supabase
                                 .from('tip_goals')
@@ -152,7 +204,7 @@ export default function PayScreen() {
                 errorMessage = error.message;
             }
 
-            Alert.alert('Payment Failed', errorMessage);
+            AlertNative.alert('Payment Failed', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -161,57 +213,66 @@ export default function PayScreen() {
     if (isSuccess) {
         return (
             <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Stack.Screen options={{ title: 'Payment Successful', headerShown: false }} />
+                <ViewNative style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <Animated.View entering={ZoomIn.duration(500)}>
                         <Ionicons name="checkmark-circle" size={120} color="#4ade80" />
                     </Animated.View>
                     <Animated.Text entering={FadeIn.delay(300).duration(500)} style={{ marginTop: 20, fontSize: 24, fontWeight: 'bold', color: theme.text }}>
                         Payment Successful!
                     </Animated.Text>
-                </View>
+                </ViewNative>
+            </SafeAreaView>
+        );
+    }
+
+    if (isFetchingData) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={theme.tint} />
             </SafeAreaView>
         );
     }
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: theme.background }}>
+        <KeyboardAvoidingViewNative behavior={PlatformNative.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: theme.background }}>
             <SafeAreaView>
-                <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
-                    <View style={{ alignItems: 'center', marginBottom: 30 }}>
-                        <Image
-                            source={{ uri: recipientAvatar || 'https://picsum.photos/seed/random1/100/100' }}
+                <ScrollViewNative contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
+                    <ViewNative style={{ alignItems: 'center', marginBottom: 30 }}>
+                        <ImageNative
+                            source={{ uri: recipientProfile?.avatar || 'https://picsum.photos/seed/random1/100/100' }}
                             style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 15 }}
                         />
-                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientName || 'Unknown Creator'}</Text>
-                        {recipientBio ? <Text style={{ color: theme.icon, marginTop: 5, textAlign: 'center' }}>{recipientBio}</Text> : null}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 5, backgroundColor: theme.card, borderRadius: 15 }}>
-                            <Text style={{ fontSize: 12, color: theme.icon, marginRight: 5 }}>{recipientAddress?.slice(0, 4)}...{recipientAddress?.slice(-4)}</Text>
-                        </View>
-                    </View>
+                        <TextNative style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientProfile?.name || 'Unknown Creator'}</TextNative>
+                        {recipientProfile?.bio ? <TextNative style={{ color: theme.icon, marginTop: 5, textAlign: 'center' }}>{recipientProfile.bio}</TextNative> : null}
+                        <ViewNative style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 5, backgroundColor: theme.card, borderRadius: 15 }}>
+                            <TextNative style={{ fontSize: 12, color: theme.icon, marginRight: 5 }}>{recipientAddress?.slice(0, 4)}...{recipientAddress?.slice(-4)}</TextNative>
+                        </ViewNative>
+                    </ViewNative>
 
-                    {tTitle ? (
+                    {activeGoal ? (
                         <LinearGradient
                             colors={['#0a7ea4', '#004f69']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={{ width: '100%', marginBottom: 20, padding: 25, borderRadius: 25, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
                         >
-                            <Text style={{ fontSize: 14, color: '#E0F7FA', fontWeight: '600', letterSpacing: 1, marginBottom: 5 }}>CONTRIBUTE TO GOAL</Text>
-                            <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>{tTitle}</Text>
-                            {tDescription ? <Text style={{ color: '#E0F7FA', marginBottom: 15 }}>{tDescription}</Text> : null}
+                            <TextNative style={{ fontSize: 14, color: '#E0F7FA', fontWeight: '600', letterSpacing: 1, marginBottom: 5 }}>CONTRIBUTE TO GOAL</TextNative>
+                            <TextNative style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>{activeGoal.title}</TextNative>
+                            {activeGoal.description ? <TextNative style={{ color: '#E0F7FA', marginBottom: 15 }}>{activeGoal.description}</TextNative> : null}
 
-                            <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <View>
-                                    <Text style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</Text>
-                                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{tTarget} SOL</Text>
-                                </View>
-                            </View>
+                            <ViewNative style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <ViewNative>
+                                    <TextNative style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</TextNative>
+                                    <TextNative style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{activeGoal.targetAmount} SOL</TextNative>
+                                </ViewNative>
+                            </ViewNative>
                         </LinearGradient>
                     ) : null}
 
-                    <View style={{ width: '100%', marginBottom: 20 }}>
-                        <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Enter Amount (SOL)</Text>
-                        <TextInput
+                    <ViewNative style={{ width: '100%', marginBottom: 20 }}>
+                        <TextNative style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Enter Amount (SOL)</TextNative>
+                        <TextInputNative
                             value={amount}
                             onChangeText={setAmount}
                             keyboardType="numeric"
@@ -220,21 +281,21 @@ export default function PayScreen() {
                             placeholderTextColor={theme.icon}
                             autoFocus
                         />
-                    </View>
+                    </ViewNative>
 
-                    <View style={{ width: '100%', marginBottom: 30 }}>
-                        <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Message (Optional)</Text>
-                        <TextInput
+                    <ViewNative style={{ width: '100%', marginBottom: 30 }}>
+                        <TextNative style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Message (Optional)</TextNative>
+                        <TextInputNative
                             value={message}
                             onChangeText={setMessage}
-                            style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, backgroundColor: theme.background }}
+                            style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, backgroundColor: theme.background, fontSize: 16, minHeight: 100, textAlignVertical: 'top' }}
                             placeholder="Say something nice..."
                             placeholderTextColor={theme.icon}
                             multiline
                         />
-                    </View>
+                    </ViewNative>
 
-                    <TouchableOpacity
+                    <TouchableOpacityNative
                         onPress={handleSendTip}
                         disabled={loading}
                         style={{
@@ -250,17 +311,17 @@ export default function PayScreen() {
                             elevation: 5,
                         }}
                     >
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
+                        <TextNative style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
                             {loading ? 'Sending...' : `Send ${amount ? amount : '0'} SOL & Mint Badge`}
-                        </Text>
-                    </TouchableOpacity>
+                        </TextNative>
+                    </TouchableOpacityNative>
 
-                    <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-                        <Text style={{ color: theme.icon }}>Cancel</Text>
-                    </TouchableOpacity>
+                    <TouchableOpacityNative onPress={() => router.back()} style={{ marginTop: 20 }}>
+                        <TextNative style={{ color: theme.icon }}>Cancel</TextNative>
+                    </TouchableOpacityNative>
 
-                </ScrollView>
+                </ScrollViewNative>
             </SafeAreaView>
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingViewNative>
     );
 }
