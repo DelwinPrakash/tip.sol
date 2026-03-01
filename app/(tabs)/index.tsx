@@ -257,7 +257,7 @@ export default function HomeScreen() {
                   <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>
                     {supporter.senderAddress.slice(0, 4)}...{supporter.senderAddress.slice(-4)}
                   </Text>
-                  <Text style={{ color: theme.icon, fontSize: 13 }}>Sent {supporter.amount.toFixed(4)} SOL</Text>
+                  <Text style={{ color: theme.icon, fontSize: 13 }}>Sent {supporter.amount.toFixed(4)} SOL{supporter.message ? ` • "${supporter.message}"` : ''}</Text>
                 </View>
                 <Text style={{ color: theme.icon, fontSize: 12 }}>{timeStr}</Text>
               </View>
