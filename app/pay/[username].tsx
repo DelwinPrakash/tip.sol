@@ -8,7 +8,7 @@ import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert as AlertNative, Image as ImageNative, KeyboardAvoidingView as KeyboardAvoidingViewNative, Platform as PlatformNative, ScrollView as ScrollViewNative, TextInput as TextInputNative, Text as TextNative, TouchableOpacity as TouchableOpacityNative, View as ViewNative } from 'react-native';
+import { ActivityIndicator, Alert as AlertNative, KeyboardAvoidingView as KeyboardAvoidingViewNative, Platform as PlatformNative, ScrollView as ScrollViewNative, TextInput as TextInputNative, Text as TextNative, TouchableOpacity as TouchableOpacityNative, View as ViewNative } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -239,10 +239,9 @@ export default function PayScreen() {
             <SafeAreaView>
                 <ScrollViewNative contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
                     <ViewNative style={{ alignItems: 'center', marginBottom: 30 }}>
-                        <ImageNative
-                            source={{ uri: recipientProfile?.avatar || 'https://picsum.photos/seed/random1/100/100' }}
-                            style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 15 }}
-                        />
+                        <ViewNative style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: theme.card, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 }}>
+                            <TextNative style={{ fontSize: 72 }}>{recipientProfile?.avatar || '🐠'}</TextNative>
+                        </ViewNative>
                         <TextNative style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientProfile?.name || 'Unknown Creator'}</TextNative>
                         {recipientProfile?.bio ? <TextNative style={{ color: theme.icon, marginTop: 5, textAlign: 'center' }}>{recipientProfile.bio}</TextNative> : null}
                         <ViewNative style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 5, backgroundColor: theme.card, borderRadius: 15 }}>
