@@ -10,6 +10,13 @@ interface UserProfile {
     avatarUri: string;
 }
 
+export interface TipTarget {
+    title: string;
+    description: string;
+    targetAmount: number;
+    startBalance: number;
+}
+
 interface AuthContextType {
     selectedAccount: Account | null;
     authorizeSession: (wallet: any) => Promise<any>;
@@ -18,6 +25,8 @@ interface AuthContextType {
     handleDisconnect: () => Promise<void>;
     userProfile: UserProfile | null;
     updateProfile: (profile: UserProfile) => Promise<void>;
+    tipTarget: TipTarget | null;
+    updateTipTarget: (target: TipTarget | null) => Promise<void>;
     isLoading: boolean;
 }
 
@@ -31,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = useAuthorization();
 
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [tipTarget, setTipTarget] = useState<TipTarget | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -44,8 +54,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     } else {
                         setUserProfile(null);
                     }
+
+                    const storedTipTarget = await AsyncStorage.getItem(`tipTarget_${selectedAccount.address}`);
+                    if (storedTipTarget) {
+                        setTipTarget(JSON.parse(storedTipTarget));
+                    } else {
+                        setTipTarget(null);
+                    }
                 } else {
                     setUserProfile(null);
+                    setTipTarget(null);
                 }
             } catch (error) {
                 console.error('Failed to load profile', error);
@@ -64,6 +82,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserProfile(profile);
         } catch (error) {
             console.error('Failed to save profile', error);
+            throw error;
+        }
+    };
+
+    const updateTipTarget = async (target: TipTarget | null) => {
+        if (!selectedAccount) return;
+        try {
+            if (target) {
+                await AsyncStorage.setItem(`tipTarget_${selectedAccount.address}`, JSON.stringify(target));
+            } else {
+                await AsyncStorage.removeItem(`tipTarget_${selectedAccount.address}`);
+            }
+            setTipTarget(target);
+        } catch (error) {
+            console.error('Failed to save tip target', error);
             throw error;
         }
     };
@@ -89,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 await deauthorizeSession(wallet);
             });
             setUserProfile(null);
+            setTipTarget(null);
         } catch (err: any) {
             alertAndLog(
                 'Error during disconnect',
@@ -107,6 +141,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 handleDisconnect,
                 userProfile,
                 updateProfile,
+                tipTarget,
+                updateTipTarget,
                 isLoading,
             }}
         >
