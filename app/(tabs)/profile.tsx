@@ -1,41 +1,61 @@
 import { useConnection } from '@/components/providers/ConnectionProvider';
-import { useAuth } from '@/context/AuthContext';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Stack, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const { connection } = useConnection();
     const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, isLoading } = useAuth();
-    
+
     const theme = Colors[colorScheme];
     const [name, setName] = useState(userProfile?.name || '');
     const [bio, setBio] = useState(userProfile?.bio || '');
     const [avatarUri, setAvatarUri] = useState(userProfile?.avatarUri || 'https://picsum.photos/seed/random1/100/100');
-    const [isEditing, setIsEditing] = useState(!userProfile);
+    const [isEditing, setIsEditing] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [balance, setBalance] = useState<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Sync state when userProfile loads
+    useEffect(() => {
+        if (userProfile) {
+            setName(userProfile.name);
+            setBio(userProfile.bio);
+            setAvatarUri(userProfile.avatarUri);
+            setIsEditing(false); // Make sure it's not editing if profile exists
+        } else if (selectedAccount && !isLoading) {
+            setIsEditing(true); // Auto-prompt editing only if no profile yet
+        }
+    }, [userProfile, selectedAccount, isLoading]);
+
+    const fetchBalance = useCallback(async () => {
+        if (selectedAccount) {
+            try {
+                const fetchedBalance = await connection.getBalance(selectedAccount.publicKey);
+                setBalance(fetchedBalance / LAMPORTS_PER_SOL);
+            } catch (e) {
+                console.error('Failed to fetch balance', e);
+            }
+        }
+    }, [selectedAccount, connection]);
 
     useEffect(() => {
-        const fetchBalance = async () => {
-            if (selectedAccount) {
-                try {
-                    const fetchedBalance = await connection.getBalance(selectedAccount.publicKey);
-                    setBalance(fetchedBalance / LAMPORTS_PER_SOL);
-                } catch (e) {
-                    console.error('Failed to fetch balance', e);
-                }
-            }
-        };
         fetchBalance();
-    }, [selectedAccount, connection]);
+    }, [fetchBalance]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchBalance();
+        setRefreshing(false);
+    }, [fetchBalance]);
 
     const handleSaveProfile = async () => {
         if (!name.trim()) return;
@@ -67,18 +87,11 @@ export default function ProfileScreen() {
         );
     }
 
-    const handlePay = () => {
-        console.log('Pay');
-        router.push({
-            pathname: '/pay/[username]',
-            params: { username: "delwin", address: "HrGu9SJ19ChfBkJvLqmWM2tavmx3LnmHwwhsXiV1ntie", name: "delwin", bio: "bio", avatar: "https://picsum.photos/seed/random12/100/100", tipTitle: "tipTitle", tipDescription: "tipDescription", tipTarget: 0.4 }
-        });
-    };
-
     return (
         <ScrollView
             style={{ flex: 1, backgroundColor: theme.background }}
             contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />}
         >
             <Stack.Screen options={{ title: 'Profile', headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.text }} />
 
@@ -172,10 +185,6 @@ export default function ProfileScreen() {
                             <Text style={{ fontWeight: 'bold', marginBottom: 5, color: theme.text }}>Your Tip Link:</Text>
                             <Text selectable style={{ color: theme.text }}>soltip.app/{userProfile?.name.replace(/\s+/g, '').toLowerCase()}</Text>
                         </View>
-
-                        <TouchableOpacity onPress={handlePay} style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10, alignItems: 'center' }}>
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>Pay</Text>
-                        </TouchableOpacity>
                     </View>
                 )}
             </View>
