@@ -71,7 +71,7 @@ export default function ProfileScreen() {
         console.log('Pay');
         router.push({
             pathname: '/pay/[username]',
-            params: { username: "delwin", address: "HrGu9SJ19ChfBkJvLqmWM2tavmx3LnmHwwhsXiV1ntie", name: "delwin", bio: "bio", avatar: "avatar" }
+            params: { username: "delwin", address: "HrGu9SJ19ChfBkJvLqmWM2tavmx3LnmHwwhsXiV1ntie", name: "delwin", bio: "bio", avatar: "https://picsum.photos/seed/random12/100/100", tipTitle: "tipTitle", tipDescription: "tipDescription", tipTarget: 0.4 }
         });
     };
 

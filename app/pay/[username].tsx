@@ -33,8 +33,6 @@ export default function PayScreen() {
     const tDescription = Array.isArray(tipDescription) ? tipDescription[0] : tipDescription;
     const tTarget = Array.isArray(tipTarget) ? tipTarget[0] : tipTarget;
 
-    console.log(useLocalSearchParams())
-
     const handleSendTip = async () => {
         if (!amount || isNaN(parseFloat(amount))) {
             Alert.alert('Invalid Amount', 'Please enter a valid amount.');
@@ -122,7 +120,7 @@ export default function PayScreen() {
         }
     };
 
-    if (true) {
+    if (isSuccess) {
         return (
             <SafeAreaView style={{flex: 1, backgroundColor: theme.background}}>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center'}}>
