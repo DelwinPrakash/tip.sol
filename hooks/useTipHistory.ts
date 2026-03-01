@@ -21,6 +21,7 @@ export function useTipHistory(walletAddress: string | undefined) {
                 .from('tip_goals')
                 .select('*')
                 .eq('wallet_address', walletAddress)
+                .eq('status', 'deleted')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

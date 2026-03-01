@@ -24,7 +24,7 @@ export default function ProfileScreen() {
     const [showMenu, setShowMenu] = useState(false);
     const [balance, setBalance] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-    const { history, loadHistory } = useTipHistory(selectedAccount?.address);
+    const { history, loadHistory } = useTipHistory(selectedAccount?.publicKey.toString());
 
     // Sync state when userProfile loads
     useEffect(() => {
@@ -32,9 +32,9 @@ export default function ProfileScreen() {
             setName(userProfile.name);
             setBio(userProfile.bio);
             setAvatarUri(userProfile.avatarUri);
-            setIsEditing(false); // Make sure it's not editing if profile exists
+            setIsEditing(false);
         } else if (selectedAccount && !isLoading) {
-            setIsEditing(true); // Auto-prompt editing only if no profile yet
+            setIsEditing(true);
         }
     }, [userProfile, selectedAccount, isLoading]);
 
