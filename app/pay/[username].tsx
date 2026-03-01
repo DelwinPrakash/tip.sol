@@ -1,6 +1,7 @@
 import { useAuthorization } from '@/components/providers/AuthorizationProvider';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
@@ -96,6 +97,21 @@ export default function PayScreen() {
                 }
 
                 console.log('Signature:', signature);
+
+                // Log to Supabase
+                const { error: dbError } = await supabase.from('tips').insert({
+                    signature: signature,
+                    sender_address: senderPublicKey.toBase58(),
+                    receiver_address: recipientAddress,
+                    amount: parseFloat(amount),
+                    message: message || null
+                });
+
+                if (dbError) {
+                    console.error('Failed to log tip to database', dbError);
+                    // We don't throw here because the on-chain txn already succeeded
+                }
+
                 setIsSuccess(true);
                 setTimeout(() => {
                     router.replace('/(tabs)');
@@ -122,8 +138,8 @@ export default function PayScreen() {
 
     if (isSuccess) {
         return (
-            <SafeAreaView style={{flex: 1, backgroundColor: theme.background}}>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <Animated.View entering={ZoomIn.duration(500)}>
                         <Ionicons name="checkmark-circle" size={120} color="#4ade80" />
                     </Animated.View>
@@ -138,91 +154,91 @@ export default function PayScreen() {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: theme.background }}>
             <SafeAreaView>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background}}>
-                <View style={{ alignItems: 'center', marginBottom: 30 }}>
-                    <Image
-                        source={{ uri: recipientAvatar || 'https://picsum.photos/seed/random1/100/100' }}
-                        style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 15 }}
-                    />
-                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientName || 'Unknown Creator'}</Text>
-                    {recipientBio ? <Text style={{ color: theme.icon, marginTop: 5, textAlign: 'center' }}>{recipientBio}</Text> : null}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 5, backgroundColor: theme.card, borderRadius: 15 }}>
-                        <Text style={{ fontSize: 12, color: theme.icon, marginRight: 5 }}>{recipientAddress?.slice(0, 4)}...{recipientAddress?.slice(-4)}</Text>
-                    </View>
-                </View>
-
-                {tTitle ? (
-                    <LinearGradient
-                        colors={['#0a7ea4', '#004f69']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{ width: '100%', marginBottom: 20, padding: 25, borderRadius: 25, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
-                    >
-                        <Text style={{ fontSize: 14, color: '#E0F7FA', fontWeight: '600', letterSpacing: 1, marginBottom: 5 }}>CONTRIBUTE TO GOAL</Text>
-                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>{tTitle}</Text>
-                        {tDescription ? <Text style={{ color: '#E0F7FA', marginBottom: 15 }}>{tDescription}</Text> : null}
-
-                        <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <View>
-                                <Text style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</Text>
-                                <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{tTarget} SOL</Text>
-                            </View>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, alignItems: 'center', backgroundColor: theme.background }}>
+                    <View style={{ alignItems: 'center', marginBottom: 30 }}>
+                        <Image
+                            source={{ uri: recipientAvatar || 'https://picsum.photos/seed/random1/100/100' }}
+                            style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 15 }}
+                        />
+                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>{recipientName || 'Unknown Creator'}</Text>
+                        {recipientBio ? <Text style={{ color: theme.icon, marginTop: 5, textAlign: 'center' }}>{recipientBio}</Text> : null}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 5, backgroundColor: theme.card, borderRadius: 15 }}>
+                            <Text style={{ fontSize: 12, color: theme.icon, marginRight: 5 }}>{recipientAddress?.slice(0, 4)}...{recipientAddress?.slice(-4)}</Text>
                         </View>
-                    </LinearGradient>
-                ) : null}
+                    </View>
 
-                <View style={{ width: '100%', marginBottom: 20 }}>
-                    <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Enter Amount (SOL)</Text>
-                    <TextInput
-                        value={amount}
-                        onChangeText={setAmount}
-                        keyboardType="numeric"
-                        style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, fontSize: 18, color: theme.text, backgroundColor: theme.background }}
-                        placeholder="0.1"
-                        placeholderTextColor={theme.icon}
-                        autoFocus
-                    />
-                </View>
+                    {tTitle ? (
+                        <LinearGradient
+                            colors={['#0a7ea4', '#004f69']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{ width: '100%', marginBottom: 20, padding: 25, borderRadius: 25, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+                        >
+                            <Text style={{ fontSize: 14, color: '#E0F7FA', fontWeight: '600', letterSpacing: 1, marginBottom: 5 }}>CONTRIBUTE TO GOAL</Text>
+                            <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 5 }}>{tTitle}</Text>
+                            {tDescription ? <Text style={{ color: '#E0F7FA', marginBottom: 15 }}>{tDescription}</Text> : null}
 
-                <View style={{ width: '100%', marginBottom: 30 }}>
-                    <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Message (Optional)</Text>
-                    <TextInput
-                        value={message}
-                        onChangeText={setMessage}
-                        style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, backgroundColor: theme.background }}
-                        placeholder="Say something nice..."
-                        placeholderTextColor={theme.icon}
-                        multiline
-                    />
-                </View>
+                            <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <View>
+                                    <Text style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</Text>
+                                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{tTarget} SOL</Text>
+                                </View>
+                            </View>
+                        </LinearGradient>
+                    ) : null}
 
-                <TouchableOpacity
-                    onPress={handleSendTip}
-                    disabled={loading}
-                    style={{
-                        backgroundColor: loading ? theme.icon : theme.tint,
-                        width: '100%',
-                        padding: 18,
-                        borderRadius: 15,
-                        alignItems: 'center',
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 3.84,
-                        elevation: 5,
-                    }}
-                >
-                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
-                        {loading ? 'Sending...' : `Send ${amount ? amount : '0'} SOL & Mint Badge`}
-                    </Text>
-                </TouchableOpacity>
+                    <View style={{ width: '100%', marginBottom: 20 }}>
+                        <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Enter Amount (SOL)</Text>
+                        <TextInput
+                            value={amount}
+                            onChangeText={setAmount}
+                            keyboardType="numeric"
+                            style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, fontSize: 18, color: theme.text, backgroundColor: theme.background }}
+                            placeholder="0.1"
+                            placeholderTextColor={theme.icon}
+                            autoFocus
+                        />
+                    </View>
 
-                <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-                    <Text style={{ color: theme.icon }}>Cancel</Text>
-                </TouchableOpacity>
+                    <View style={{ width: '100%', marginBottom: 30 }}>
+                        <Text style={{ marginBottom: 10, fontWeight: 'bold', color: theme.text }}>Message (Optional)</Text>
+                        <TextInput
+                            value={message}
+                            onChangeText={setMessage}
+                            style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, backgroundColor: theme.background }}
+                            placeholder="Say something nice..."
+                            placeholderTextColor={theme.icon}
+                            multiline
+                        />
+                    </View>
 
-            </ScrollView>
-        </SafeAreaView>
+                    <TouchableOpacity
+                        onPress={handleSendTip}
+                        disabled={loading}
+                        style={{
+                            backgroundColor: loading ? theme.icon : theme.tint,
+                            width: '100%',
+                            padding: 18,
+                            borderRadius: 15,
+                            alignItems: 'center',
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 3.84,
+                            elevation: 5,
+                        }}
+                    >
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
+                            {loading ? 'Sending...' : `Send ${amount ? amount : '0'} SOL & Mint Badge`}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                        <Text style={{ color: theme.icon }}>Cancel</Text>
+                    </TouchableOpacity>
+
+                </ScrollView>
+            </SafeAreaView>
         </KeyboardAvoidingView>
     );
 }
