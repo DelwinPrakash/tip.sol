@@ -9,6 +9,8 @@ export interface Supporter {
     amount: number;
     message?: string;
     timestamp: number | null | undefined;
+    avatarUri?: string;
+    name?: string;
 }
 
 export function useRecentSupporters(selectedAccount: Account | null) {
@@ -38,14 +40,35 @@ export function useRecentSupporters(selectedAccount: Account | null) {
                 return;
             }
 
-            const fetchedSupporters: Supporter[] = data.map((row: any) => ({
-                id: row.id,
-                signature: row.signature,
-                senderAddress: row.sender_address,
-                amount: Number(row.amount),
-                message: row.message,
-                timestamp: new Date(row.created_at).getTime() / 1000,
-            }));
+            const uniqueSenders = [...new Set(data.map((row: any) => row.sender_address))];
+
+            let profilesMap: Record<string, any> = {};
+            if (uniqueSenders.length > 0) {
+                const { data: profilesData, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('wallet_address, avatar_url, username, display_name')
+                    .in('wallet_address', uniqueSenders);
+
+                if (!profilesError && profilesData) {
+                    profilesData.forEach((profile: any) => {
+                        profilesMap[profile.wallet_address] = profile;
+                    });
+                }
+            }
+
+            const fetchedSupporters: Supporter[] = data.map((row: any) => {
+                const profile = profilesMap[row.sender_address];
+                return {
+                    id: row.id,
+                    signature: row.signature,
+                    senderAddress: row.sender_address,
+                    amount: Number(row.amount),
+                    message: row.message,
+                    timestamp: new Date(row.created_at).getTime() / 1000,
+                    avatarUri: profile?.avatar_url || '🎩',
+                    name: profile?.username || profile?.display_name || null,
+                };
+            });
 
             setSupporters(fetchedSupporters);
         } catch (e) {
