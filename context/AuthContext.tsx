@@ -1,6 +1,6 @@
 import { Account, useAuthorization } from '@/components/providers/AuthorizationProvider';
+import { supabase } from '@/lib/supabase';
 import { alertAndLog } from '@/util/alertAndLog';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -48,17 +48,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsLoading(true);
             try {
                 if (selectedAccount) {
-                    const storedProfile = await AsyncStorage.getItem(`profile_${selectedAccount.address}`);
-                    if (storedProfile) {
-                        setUserProfile(JSON.parse(storedProfile));
-                    } else {
-                        setUserProfile(null);
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('wallet_address', selectedAccount.publicKey)
+                        .single();
+
+                    if (error && error.code !== 'PGRST116') {
+                        console.error('Failed to load profile from Supabase', error);
                     }
 
-                    const storedTipTarget = await AsyncStorage.getItem(`tipTarget_${selectedAccount.address}`);
-                    if (storedTipTarget) {
-                        setTipTarget(JSON.parse(storedTipTarget));
+                    if (data) {
+                        setUserProfile({
+                            name: data.username || data.display_name || '',
+                            bio: data.bio || '',
+                            avatarUri: data.avatar_url || '',
+                        });
+
+                        if (data.tip_target_amount) {
+                            setTipTarget({
+                                title: data.tip_target_title || '',
+                                description: data.tip_target_description || '',
+                                targetAmount: Number(data.tip_target_amount),
+                                startBalance: Number(data.tip_start_balance) || 0,
+                            });
+                        } else {
+                            setTipTarget(null);
+                        }
                     } else {
+                        setUserProfile(null);
                         setTipTarget(null);
                     }
                 } else {
@@ -78,7 +96,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updateProfile = async (profile: UserProfile) => {
         if (!selectedAccount) return;
         try {
-            await AsyncStorage.setItem(`profile_${selectedAccount.address}`, JSON.stringify(profile));
+            const { error } = await supabase
+                .from('profiles')
+                .upsert({
+                    wallet_address: selectedAccount.publicKey,
+                    username: profile.name,
+                    display_name: profile.name,
+                    bio: profile.bio,
+                    avatar_url: profile.avatarUri,
+                }, { onConflict: 'wallet_address' });
+
+            if (error) throw error;
             setUserProfile(profile);
         } catch (error) {
             console.error('Failed to save profile', error);
@@ -89,11 +117,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updateTipTarget = async (target: TipTarget | null) => {
         if (!selectedAccount) return;
         try {
-            if (target) {
-                await AsyncStorage.setItem(`tipTarget_${selectedAccount.address}`, JSON.stringify(target));
-            } else {
-                await AsyncStorage.removeItem(`tipTarget_${selectedAccount.address}`);
-            }
+            const { error } = await supabase
+                .from('profiles')
+                .upsert({
+                    wallet_address: selectedAccount.publicKey,
+                    tip_target_title: target?.title || null,
+                    tip_target_description: target?.description || null,
+                    tip_target_amount: target?.targetAmount || null,
+                    tip_start_balance: target?.startBalance || null,
+                }, { onConflict: 'wallet_address' });
+
+            if (error) throw error;
             setTipTarget(target);
         } catch (error) {
             console.error('Failed to save tip target', error);
