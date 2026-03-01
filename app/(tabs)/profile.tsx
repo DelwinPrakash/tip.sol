@@ -7,13 +7,13 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const { connection } = useConnection();
-    const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, isLoading } = useAuth();
+    const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, tipTarget, updateTipTarget, isLoading } = useAuth();
 
     const theme = Colors[colorScheme];
     const [name, setName] = useState(userProfile?.name || '');
@@ -181,10 +181,33 @@ export default function ProfileScreen() {
                             <Text style={{ color: '#B2EBF2', fontSize: 14, marginTop: 5 }}>≈ $0.00 USD</Text>
                         </LinearGradient>
 
-                        <View style={{ backgroundColor: theme.card, padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                            <Text style={{ fontWeight: 'bold', marginBottom: 5, color: theme.text }}>Your Tip Link:</Text>
-                            <Text selectable style={{ color: theme.text }}>soltip.app/{userProfile?.name.replace(/\s+/g, '').toLowerCase()}</Text>
-                        </View>
+                        {/* Current Tip Target */}
+                        {tipTarget ? (
+                            <View style={{ backgroundColor: theme.card, borderRadius: 15, padding: 20, marginBottom: 30, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.text }}>Current Goal</Text>
+                                    <TouchableOpacity onPress={() => {
+                                        Alert.alert(
+                                            "Delete Goal",
+                                            "Are you sure you want to delete your current goal?",
+                                            [
+                                                { text: "Cancel", style: "cancel" },
+                                                { text: "Delete", style: "destructive", onPress: () => updateTipTarget(null) }
+                                            ]
+                                        );
+                                    }}>
+                                        <IconSymbol size={20} name="trash" color="#ef4444" />
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.tint, marginBottom: 5 }}>{tipTarget.title}</Text>
+                                {tipTarget.description ? <Text style={{ color: theme.icon, marginBottom: 15 }}>{tipTarget.description}</Text> : null}
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text style={{ fontWeight: 'bold', color: theme.text }}>{Math.max(0, (balance || 0) - tipTarget.startBalance).toFixed(4)} SOL Raised</Text>
+                                    <Text style={{ fontWeight: 'bold', color: theme.text }}>{tipTarget.targetAmount} SOL Target</Text>
+                                </View>
+                            </View>
+                        ) : null}
+
                     </View>
                 )}
             </View>

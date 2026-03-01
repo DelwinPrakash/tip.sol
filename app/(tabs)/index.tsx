@@ -62,7 +62,7 @@ export default function HomeScreen() {
       await fetchSupporters();
     }
     setRefreshing(false);
-  }, [selectedAccount, fetchBalance, fetchSupporters]);
+  }, [selectedAccount, fetchBalance]);
 
   useEffect(() => {
     if (selectedAccount) {
@@ -118,9 +118,6 @@ export default function HomeScreen() {
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>🎯 {tipTarget.title}</Text>
-            <TouchableOpacity onPress={() => updateTipTarget(null)}>
-              <IconSymbol size={20} name="trash" color="#c8192bff" />
-            </TouchableOpacity>
           </View>
 
           {Math.max(0, (balance || 0) - tipTarget.startBalance) >= tipTarget.targetAmount ? (
