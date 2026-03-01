@@ -3,18 +3,21 @@ import { CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
+import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function ScanScreen() {
   const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
-  const [facing, setFacing] = useState<CameraType>('back');
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
+  const { selectedAccount, handleConnect, isLoading } = useAuth();
   const router = useRouter();
   const isFocused = useIsFocused();
+  
+  const theme = Colors[colorScheme];
+  
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<CameraType>('back');
+  const [scanned, setScanned] = useState(false);
 
   if (!permission) {
     return <View />;
@@ -38,20 +41,13 @@ export default function ScanScreen() {
         const url = new URL(data);
         const params = new URLSearchParams(url.search);
         const address = params.get('address');
-        const name = params.get('name');
-        const bio = params.get('bio');
-        const avatar = params.get('avatar');
-        const tipTitle = params.get('tipTitle');
-        const tipDescription = params.get('tipDescription'); 
-        const tipTarget = params.get('tipTarget');
-
         const pathParts = url.pathname.split('/');
         const username = pathParts[pathParts.length - 1];
 
         if (address) {
           router.push({
             pathname: '/pay/[username]',
-            params: { username, address, name, bio, avatar, tipTitle, tipDescription, tipTarget }
+            params: { username, address }
           });
 
           setTimeout(() => setScanned(false), 2000);
@@ -75,6 +71,22 @@ export default function ScanScreen() {
 
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
+  }
+
+  if (!selectedAccount) {
+    return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.background }}>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>Welcome to SolTip</Text>
+            <Text style={{ textAlign: 'center', marginBottom: 30, color: theme.text }}>Connect your Solana wallet to start receiving tips.</Text>
+            <TouchableOpacity
+                onPress={handleConnect}
+                disabled={isLoading}
+                style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10 }}
+            >
+                <Text style={{ color: 'white', fontWeight: 'bold' }}>Connect Wallet</Text>
+            </TouchableOpacity>
+        </View>
+    );
   }
 
   return (
