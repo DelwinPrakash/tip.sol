@@ -14,7 +14,7 @@ export interface TipTarget {
     title: string;
     description: string;
     targetAmount: number;
-    startBalance: number;
+    amountRaised?: number;
 }
 
 interface AuthContextType {
@@ -27,6 +27,7 @@ interface AuthContextType {
     updateProfile: (profile: UserProfile) => Promise<void>;
     tipTarget: TipTarget | null;
     updateTipTarget: (target: TipTarget | null) => Promise<void>;
+    refreshProfile: () => Promise<void>;
     isLoading: boolean;
 }
 
@@ -43,55 +44,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [tipTarget, setTipTarget] = useState<TipTarget | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const loadProfile = async () => {
-            setIsLoading(true);
-            try {
-                if (selectedAccount) {
-                    const { data, error } = await supabase
-                        .from('profiles')
+    const loadProfile = useCallback(async ({ isRefresh = false } = {}) => {
+        if (!isRefresh) setIsLoading(true);
+        try {
+            if (selectedAccount) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('wallet_address', selectedAccount.publicKey)
+                    .single();
+
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Failed to load profile from Supabase', error);
+                }
+
+                if (data) {
+                    setUserProfile({
+                        name: data.username || data.display_name || '',
+                        bio: data.bio || '',
+                        avatarUri: data.avatar_url || '',
+                    });
+
+                    const { data: goalData, error: goalError } = await supabase
+                        .from('tip_goals')
                         .select('*')
                         .eq('wallet_address', selectedAccount.publicKey)
+                        .eq('status', 'active')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
                         .single();
 
-                    if (error && error.code !== 'PGRST116') {
-                        console.error('Failed to load profile from Supabase', error);
+                    if (goalError && goalError.code !== 'PGRST116') {
+                        console.error('Failed to load active tip goal', goalError);
                     }
 
-                    if (data) {
-                        setUserProfile({
-                            name: data.username || data.display_name || '',
-                            bio: data.bio || '',
-                            avatarUri: data.avatar_url || '',
+                    if (goalData) {
+                        setTipTarget({
+                            title: goalData.title,
+                            description: goalData.description || '',
+                            targetAmount: Number(goalData.target_amount),
+                            amountRaised: Number(goalData.amount_raised) || 0,
                         });
-
-                        if (data.tip_target_amount) {
-                            setTipTarget({
-                                title: data.tip_target_title || '',
-                                description: data.tip_target_description || '',
-                                targetAmount: Number(data.tip_target_amount),
-                                startBalance: Number(data.tip_start_balance) || 0,
-                            });
-                        } else {
-                            setTipTarget(null);
-                        }
                     } else {
-                        setUserProfile(null);
                         setTipTarget(null);
                     }
                 } else {
                     setUserProfile(null);
                     setTipTarget(null);
                 }
-            } catch (error) {
-                console.error('Failed to load profile', error);
-            } finally {
-                setIsLoading(false);
+            } else {
+                setUserProfile(null);
+                setTipTarget(null);
             }
-        };
-
-        loadProfile();
+        } catch (error) {
+            console.error('Failed to load profile', error);
+        } finally {
+            setIsLoading(false);
+        }
     }, [selectedAccount]);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
 
     const updateProfile = async (profile: UserProfile) => {
         if (!selectedAccount) return;
@@ -117,17 +131,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updateTipTarget = async (target: TipTarget | null) => {
         if (!selectedAccount) return;
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .upsert({
-                    wallet_address: selectedAccount.publicKey,
-                    tip_target_title: target?.title || null,
-                    tip_target_description: target?.description || null,
-                    tip_target_amount: target?.targetAmount || null,
-                    tip_start_balance: target?.startBalance || null,
-                }, { onConflict: 'wallet_address' });
+            if (target === null) {
+                // Deactivate current goal
+                const { error } = await supabase
+                    .from('tip_goals')
+                    .update({ status: 'deleted' })
+                    .eq('wallet_address', selectedAccount.publicKey)
+                    .eq('status', 'active');
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                // First, deactivate any currently active goals
+                await supabase
+                    .from('tip_goals')
+                    .update({ status: 'deleted' })
+                    .eq('wallet_address', selectedAccount.publicKey)
+                    .eq('status', 'active');
+
+                // Insert the new active goal
+                const { error } = await supabase
+                    .from('tip_goals')
+                    .insert({
+                        wallet_address: selectedAccount.publicKey,
+                        title: target.title,
+                        description: target.description,
+                        target_amount: target.targetAmount,
+                        amount_raised: target.amountRaised || 0,
+                        status: 'active'
+                    });
+
+                if (error) throw error;
+            }
+
             setTipTarget(target);
         } catch (error) {
             console.error('Failed to save tip target', error);
@@ -177,6 +212,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 updateProfile,
                 tipTarget,
                 updateTipTarget,
+                refreshProfile: () => loadProfile({ isRefresh: true }),
                 isLoading,
             }}
         >
@@ -192,7 +228,6 @@ export const useAuth = () => {
     }
     return context;
 };
-
 
 // import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 

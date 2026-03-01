@@ -3,6 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTipHistory } from '@/hooks/useTipHistory';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -13,7 +14,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const { connection } = useConnection();
-    const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, tipTarget, updateTipTarget, isLoading } = useAuth();
+    const { selectedAccount, handleConnect, handleDisconnect, userProfile, updateProfile, tipTarget, updateTipTarget, isLoading, refreshProfile } = useAuth();
 
     const theme = Colors[colorScheme];
     const [name, setName] = useState(userProfile?.name || '');
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
     const [showMenu, setShowMenu] = useState(false);
     const [balance, setBalance] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+    const { history, loadHistory } = useTipHistory(selectedAccount?.address);
 
     // Sync state when userProfile loads
     useEffect(() => {
@@ -49,13 +51,16 @@ export default function ProfileScreen() {
 
     useEffect(() => {
         fetchBalance();
-    }, [fetchBalance]);
+        loadHistory();
+    }, [fetchBalance, loadHistory]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await fetchBalance();
+        await loadHistory();
+        if (refreshProfile) await refreshProfile();
         setRefreshing(false);
-    }, [fetchBalance]);
+    }, [fetchBalance, loadHistory, refreshProfile]);
 
     const handleSaveProfile = async () => {
         if (!name.trim()) return;
@@ -202,11 +207,37 @@ export default function ProfileScreen() {
                                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.tint, marginBottom: 5 }}>{tipTarget.title}</Text>
                                 {tipTarget.description ? <Text style={{ color: theme.icon, marginBottom: 15 }}>{tipTarget.description}</Text> : null}
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={{ fontWeight: 'bold', color: theme.text }}>{Math.max(0, (balance || 0) - tipTarget.startBalance).toFixed(4)} SOL Raised</Text>
+                                    <Text style={{ fontWeight: 'bold', color: theme.text }}>{(tipTarget.amountRaised || 0).toFixed(4)} SOL Raised</Text>
                                     <Text style={{ fontWeight: 'bold', color: theme.text }}>{tipTarget.targetAmount} SOL Target</Text>
                                 </View>
                             </View>
                         ) : null}
+
+                        {/* Tip History */}
+                        <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 15, color: theme.text }}>Recent Goals</Text>
+                        <View style={{ backgroundColor: theme.card, borderRadius: 20, padding: 5, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 }}>
+                            {history.length === 0 ? (
+                                <Text style={{ padding: 15, color: theme.icon, textAlign: 'center' }}>No recent goals yet.</Text>
+                            ) : (
+                                history.map((item, idx) => {
+                                    const timeStr = new Date(item.createdAt).toLocaleDateString();
+                                    return (
+                                        <View key={item.id} style={[{ flexDirection: 'row', alignItems: 'center', padding: 15 }, idx === history.length - 1 ? {} : { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+                                            <View style={[{ width: 45, height: 45, borderRadius: 22.5, marginRight: 15, justifyContent: 'center', alignItems: 'center' }, { backgroundColor: '#0a7ea4' }]}>
+                                                <Text style={{ fontSize: 18 }}>🎯</Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>
+                                                    {item.title}
+                                                </Text>
+                                                <Text style={{ color: theme.icon, fontSize: 13 }}>Target: {item.targetAmount} SOL</Text>
+                                            </View>
+                                            <Text style={{ color: theme.icon, fontSize: 12 }}>{timeStr}</Text>
+                                        </View>
+                                    );
+                                })
+                            )}
+                        </View>
 
                     </View>
                 )}

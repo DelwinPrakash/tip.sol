@@ -15,7 +15,7 @@ import QRCode from 'react-native-qrcode-svg';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
-  const { selectedAccount, userProfile, tipTarget, updateTipTarget } = useAuth();
+  const { selectedAccount, userProfile, tipTarget, updateTipTarget, refreshProfile } = useAuth();
   const { connection } = useConnection();
 
   const theme = Colors[colorScheme];
@@ -37,7 +37,6 @@ export default function HomeScreen() {
       title: newTargetTitle,
       description: newTargetDescription,
       targetAmount: parseFloat(newTargetAmount),
-      startBalance: balance || 0,
     });
     setIsCreatingTarget(false);
     setNewTargetTitle('');
@@ -60,9 +59,10 @@ export default function HomeScreen() {
     if (selectedAccount) {
       await fetchBalance(selectedAccount);
       await fetchSupporters();
+      if (refreshProfile) await refreshProfile();
     }
     setRefreshing(false);
-  }, [selectedAccount, fetchBalance]);
+  }, [selectedAccount, fetchBalance, fetchSupporters, refreshProfile]);
 
   useEffect(() => {
     if (selectedAccount) {
@@ -120,7 +120,7 @@ export default function HomeScreen() {
             <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>🎯 {tipTarget.title}</Text>
           </View>
 
-          {Math.max(0, (balance || 0) - tipTarget.startBalance) >= tipTarget.targetAmount ? (
+          {Math.max(0, tipTarget.amountRaised || 0) >= tipTarget.targetAmount ? (
             <View style={{ alignItems: 'center', paddingVertical: 15 }}>
               <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#4dd0e1', marginBottom: 5 }}>Target Reached! 🎉</Text>
               <Text style={{ color: '#E0F7FA', textAlign: 'center' }}>You've successfully raised {tipTarget.targetAmount} SOL for this goal.</Text>
@@ -135,7 +135,7 @@ export default function HomeScreen() {
               <View style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 10, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
                   <Text style={{ color: '#E0F7FA', fontSize: 12 }}>Raised</Text>
-                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#4dd0e1' }}>{Math.max(0, (balance || 0) - tipTarget.startBalance).toFixed(4)} SOL</Text>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#4dd0e1' }}>{Math.max(0, tipTarget.amountRaised || 0).toFixed(4)} SOL</Text>
                 </View>
                 <Text style={{ fontSize: 18, color: '#E0F7FA' }}>/</Text>
                 <View style={{ alignItems: 'flex-end' }}>
@@ -146,7 +146,7 @@ export default function HomeScreen() {
 
               {/* Simple Progress Bar */}
               <View style={{ height: 8, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 4, marginTop: 15, overflow: 'hidden' }}>
-                <View style={{ height: '100%', backgroundColor: '#4dd0e1', width: `${Math.min(100, (Math.max(0, (balance || 0) - tipTarget.startBalance) / tipTarget.targetAmount) * 100)}%` }} />
+                <View style={{ height: '100%', backgroundColor: '#4dd0e1', width: `${tipTarget.targetAmount > 0 ? Math.min(100, (Math.max(0, tipTarget.amountRaised || 0) / tipTarget.targetAmount) * 100) : 0}%` }} />
               </View>
             </>
           )}

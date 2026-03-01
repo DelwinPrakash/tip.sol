@@ -110,6 +110,28 @@ export default function PayScreen() {
                 if (dbError) {
                     console.error('Failed to log tip to database', dbError);
                     // We don't throw here because the on-chain txn already succeeded
+                } else {
+                    if (tTitle) {
+                        try {
+                            const { data: goal } = await supabase
+                                .from('tip_goals')
+                                .select('amount_raised')
+                                .eq('wallet_address', recipientAddress)
+                                .eq('status', 'active')
+                                .single();
+
+                            if (goal) {
+                                const currentRaised = Number(goal.amount_raised) || 0;
+                                await supabase
+                                    .from('tip_goals')
+                                    .update({ amount_raised: currentRaised + parseFloat(amount) })
+                                    .eq('wallet_address', recipientAddress)
+                                    .eq('status', 'active');
+                            }
+                        } catch (e) {
+                            console.error('Failed to update target raised amount', e);
+                        }
+                    }
                 }
 
                 setIsSuccess(true);
