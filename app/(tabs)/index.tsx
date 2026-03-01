@@ -4,6 +4,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRecentSupporters } from '@/hooks/useRecentSupporters';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +22,7 @@ export default function HomeScreen() {
 
   const [balance, setBalance] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { supporters, loadingSupporters, fetchSupporters } = useRecentSupporters(selectedAccount);
   const [showQr, setShowQr] = useState(false);
   const [isCreatingTarget, setIsCreatingTarget] = useState(false);
   const [newTargetTitle, setNewTargetTitle] = useState('');
@@ -57,9 +59,10 @@ export default function HomeScreen() {
     setRefreshing(true);
     if (selectedAccount) {
       await fetchBalance(selectedAccount);
+      await fetchSupporters();
     }
     setRefreshing(false);
-  }, [selectedAccount, fetchBalance]);
+  }, [selectedAccount, fetchBalance, fetchSupporters]);
 
   useEffect(() => {
     if (selectedAccount) {
@@ -233,29 +236,34 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {/* Recent Tips (Mock) */}
+      {/* Recent Tips */}
       <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 15, color: theme.text }}>Recent Supporters</Text>
       <View style={{ backgroundColor: theme.card, borderRadius: 20, padding: 5, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5 }}>
-        <View style={[styles.transactionRow, { borderBottomColor: theme.border }]}>
-          <View style={[styles.avatarPlaceholder, { backgroundColor: '#FFD700' }]}>
-            <Text style={{ fontSize: 18 }}>🎩</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>Anonymous Fan</Text>
-            <Text style={{ color: theme.icon, fontSize: 13 }}>Sent 0.1 SOL</Text>
-          </View>
-          <Text style={{ color: theme.icon, fontSize: 12 }}>2m ago</Text>
-        </View>
-        <View style={[styles.transactionRow, { borderBottomWidth: 0 }]}>
-          <View style={[styles.avatarPlaceholder, { backgroundColor: '#FF69B4' }]}>
-            <Text style={{ fontSize: 18 }}>💖</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>Super Fan</Text>
-            <Text style={{ color: theme.icon, fontSize: 13 }}>Sent 0.5 SOL • "Great content!"</Text>
-          </View>
-          <Text style={{ color: theme.icon, fontSize: 12 }}>1h ago</Text>
-        </View>
+        {loadingSupporters ? (
+          <Text style={{ padding: 15, color: theme.icon, textAlign: 'center' }}>Loading supporters...</Text>
+        ) : supporters.length === 0 ? (
+          <Text style={{ padding: 15, color: theme.icon, textAlign: 'center' }}>No supporters yet. Share your link!</Text>
+        ) : (
+          supporters.map((supporter, idx) => {
+            const timeStr = supporter.timestamp
+              ? new Date(supporter.timestamp * 1000).toLocaleDateString()
+              : 'Unknown time';
+            return (
+              <View key={supporter.signature} style={[styles.transactionRow, idx === supporters.length - 1 ? { borderBottomWidth: 0 } : { borderBottomColor: theme.border }]}>
+                <View style={[styles.avatarPlaceholder, { backgroundColor: '#FFD700' }]}>
+                  <Text style={{ fontSize: 18 }}>🎩</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>
+                    {supporter.senderAddress.slice(0, 4)}...{supporter.senderAddress.slice(-4)}
+                  </Text>
+                  <Text style={{ color: theme.icon, fontSize: 13 }}>Sent {supporter.amount.toFixed(4)} SOL</Text>
+                </View>
+                <Text style={{ color: theme.icon, fontSize: 12 }}>{timeStr}</Text>
+              </View>
+            );
+          })
+        )}
       </View>
     </ScrollView>
   )
