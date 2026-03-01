@@ -1,28 +1,21 @@
-import { Account } from '@/components/providers/AuthorizationProvider';
-import { useConnection } from '@/components/providers/ConnectionProvider';
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRecentSupporters } from '@/hooks/useRecentSupporters';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import QRCode from 'react-native-qrcode-svg';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
-  const { selectedAccount, userProfile, tipTarget, updateTipTarget, refreshProfile } = useAuth();
-  const { connection } = useConnection();
+  const { selectedAccount, userProfile, tipTarget, updateTipTarget, refreshProfile, handleConnect, isLoading } = useAuth();
+  const { supporters, loadingSupporters, fetchSupporters } = useRecentSupporters(selectedAccount);
 
   const theme = Colors[colorScheme];
 
-  const [balance, setBalance] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { supporters, loadingSupporters, fetchSupporters } = useRecentSupporters(selectedAccount);
   const [showQr, setShowQr] = useState(false);
   const [isCreatingTarget, setIsCreatingTarget] = useState(false);
   const [newTargetTitle, setNewTargetTitle] = useState('');
@@ -43,43 +36,33 @@ export default function HomeScreen() {
     setNewTargetDescription('');
     setNewTargetAmount('');
   };
-  const fetchBalance = useCallback(async (account: Account) => {
-    try {
-      const fetchedBalance = await connection.getBalance(account.publicKey);
-      setBalance(fetchedBalance / LAMPORTS_PER_SOL);
-    } catch (e) {
-      console.error('Failed to fetch balance', e);
-    }
-  }, [connection],
-  );
-
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (selectedAccount) {
-      await fetchBalance(selectedAccount);
       await fetchSupporters();
       if (refreshProfile) await refreshProfile();
     }
     setRefreshing(false);
-  }, [selectedAccount, fetchBalance, fetchSupporters, refreshProfile]);
-
-  useEffect(() => {
-    if (selectedAccount) {
-      fetchBalance(selectedAccount);
-    }
-  }, [selectedAccount, fetchBalance]);
+  }, [selectedAccount, fetchSupporters, refreshProfile]);
 
   const tipLink = userProfile && selectedAccount
-    ? `https://soltip.app/pay/${userProfile.name.replace(/\s+/g, '').toLowerCase()}?address=${selectedAccount.publicKey}&name=${encodeURIComponent(userProfile.name)}&bio=${encodeURIComponent(userProfile.bio)}&avatar=${encodeURIComponent(userProfile.avatarUri)}${tipTarget ? `&tipTitle=${encodeURIComponent(tipTarget.title)}&tipDescription=${encodeURIComponent(tipTarget.description)}&tipTarget=${encodeURIComponent(tipTarget.targetAmount.toString())}` : ''}`
+    ? `https://soltip.app/pay/${userProfile.name.replace(/\s+/g, '').toLowerCase()}?address=${selectedAccount.publicKey}`
     : '';
 
 
   if (!selectedAccount) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.background }}>
-        <Stack.Screen options={{ title: 'Dashboard', headerShown: false }} />
-        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 20, color: theme.text }}>Please connect your wallet in the Profile tab to view your dashboard.</Text>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>Welcome to SolTip</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 30, color: theme.text }}>Connect your Solana wallet to start receiving tips.</Text>
+        <TouchableOpacity
+          onPress={handleConnect}
+          disabled={isLoading}
+          style={{ backgroundColor: theme.tint, padding: 15, borderRadius: 10 }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Connect Wallet</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -150,6 +133,22 @@ export default function HomeScreen() {
               </View>
             </>
           )}
+
+          {/* QR Button inside Tip Target */}
+          <View style={{ marginTop: 25, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.1)' }}>
+            <TouchableOpacity onPress={() => setShowQr(!showQr)} style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingVertical: 12, borderRadius: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+              <IconSymbol size={20} name="qrcode" color="#fff" />
+              <Text style={{ color: 'white', fontWeight: 'bold', marginLeft: 8 }}>{showQr ? 'Hide QR Code' : 'Show QR Code'}</Text>
+            </TouchableOpacity>
+
+            {showQr && tipLink ? (
+              <View style={{ alignItems: 'center', marginTop: 20, padding: 20, backgroundColor: 'white', borderRadius: 20, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 }}>
+                <Text style={{ marginBottom: 15, fontWeight: 'bold', fontSize: 16, color: '#333' }}>Your Tip QR</Text>
+                <QRCode value={tipLink} size={180} />
+                <Text style={{ marginTop: 15, color: '#888', textAlign: 'center', fontSize: 10 }}>{tipLink}</Text>
+              </View>
+            ) : null}
+          </View>
         </LinearGradient>
       ) : (
         <View style={{ backgroundColor: theme.card, borderRadius: 20, padding: 20, marginBottom: 30, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 }}>
@@ -161,14 +160,15 @@ export default function HomeScreen() {
                 placeholderTextColor={theme.icon}
                 value={newTargetTitle}
                 onChangeText={setNewTargetTitle}
-                style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 10, color: theme.text, marginBottom: 10 }}
+                style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, marginBottom: 12, fontSize: 16 }}
               />
               <TextInput
                 placeholder="Description (Optional)"
                 placeholderTextColor={theme.icon}
                 value={newTargetDescription}
                 onChangeText={setNewTargetDescription}
-                style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 10, color: theme.text, marginBottom: 10 }}
+                style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, marginBottom: 12, fontSize: 16, minHeight: 80, textAlignVertical: 'top' }}
+                multiline
               />
               <TextInput
                 placeholder="Target Amount (SOL)"
@@ -176,7 +176,7 @@ export default function HomeScreen() {
                 value={newTargetAmount}
                 onChangeText={setNewTargetAmount}
                 keyboardType="numeric"
-                style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 10, color: theme.text, marginBottom: 15 }}
+                style={{ borderWidth: 1, borderColor: theme.border, padding: 15, borderRadius: 10, color: theme.text, marginBottom: 20, fontSize: 16 }}
               />
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
                 <TouchableOpacity onPress={() => setIsCreatingTarget(false)} style={{ padding: 10, marginRight: 10 }}>
@@ -200,17 +200,7 @@ export default function HomeScreen() {
       )}
 
       {/* Actions */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 }}>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.card }]}
-          onPress={() => setShowQr(!showQr)}
-        >
-          <View style={[styles.iconContainer, { backgroundColor: '#0a7ea4' }]}>
-            <IconSymbol size={24} name="qrcode" color="#fff" />
-          </View>
-          <Text style={[styles.actionText, { color: theme.text }]}>{showQr ? 'Hide QR' : 'Show QR'}</Text>
-        </TouchableOpacity>
-
+      {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 }}>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: theme.card }]}
           onPress={() => {
@@ -220,18 +210,9 @@ export default function HomeScreen() {
           <View style={[styles.iconContainer, { backgroundColor: '#0a7ea4' }]}>
             <IconSymbol size={24} name="doc.on.doc" color="#fff" />
           </View>
-          <Text style={[styles.actionText, { color: theme.text }]}>Copy Link</Text>
+          <Text style={[styles.actionText, { color: theme.text }]}>Copy Tip Link</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* QR Code Section */}
-      {showQr && tipLink ? (
-        <View style={{ alignItems: 'center', marginBottom: 30, padding: 30, backgroundColor: 'white', borderRadius: 25, elevation: 5, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 }}>
-          <Text style={{ marginBottom: 20, fontWeight: 'bold', fontSize: 18, color: '#333' }}>Your Tip QR</Text>
-          <QRCode value={tipLink} size={220} />
-          <Text style={{ marginTop: 20, color: '#888', textAlign: 'center', fontSize: 12 }}>{tipLink}</Text>
-        </View>
-      ) : null}
+      </View> */}
 
       {/* Recent Tips */}
       <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 15, color: theme.text }}>Recent Supporters</Text>
@@ -248,11 +229,11 @@ export default function HomeScreen() {
             return (
               <View key={supporter.signature} style={[styles.transactionRow, idx === supporters.length - 1 ? { borderBottomWidth: 0 } : { borderBottomColor: theme.border }]}>
                 <View style={[styles.avatarPlaceholder, { backgroundColor: '#FFD700' }]}>
-                  <Text style={{ fontSize: 18 }}>🎩</Text>
+                  <Text style={{ fontSize: 24 }}>{supporter.avatarUri || '🎩'}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: 'bold', fontSize: 16, color: theme.text }}>
-                    {supporter.senderAddress.slice(0, 4)}...{supporter.senderAddress.slice(-4)}
+                    {supporter.name ? supporter.name : `${supporter.senderAddress.slice(0, 4)}...${supporter.senderAddress.slice(-4)}`}
                   </Text>
                   <Text style={{ color: theme.icon, fontSize: 13 }}>Sent {supporter.amount.toFixed(4)} SOL{supporter.message ? ` • "${supporter.message}"` : ''}</Text>
                 </View>
