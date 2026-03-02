@@ -72,25 +72,6 @@ export default function HomeScreen() {
       contentContainerStyle={{ flexGrow: 1, padding: 20, paddingTop: 60, backgroundColor: theme.background }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />}
     >
-      {/* <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 32, fontWeight: '800', color: theme.text }}>Hello, {userProfile?.name || 'Creator'} 👋</Text>
-        <Text style={{ color: theme.icon, fontSize: 16 }}>Welcome back to your dashboard.</Text>
-      </View> */}
-
-      {/* Balance Card with Gradient */}
-      {/* <LinearGradient
-        colors={['#0a7ea4', '#004f69']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ padding: 25, borderRadius: 25, marginBottom: 30, elevation: 8, shadowColor: '#0a7ea4', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
-      >
-        <Text style={{ color: '#E0F7FA', marginBottom: 5, fontSize: 14, fontWeight: '600', letterSpacing: 1 }}>TOTAL BALANCE</Text>
-        <Text style={{ color: 'white', fontSize: 42, fontWeight: 'bold' }}>
-          {balance !== null ? `${balance.toFixed(4)} SOL` : '...'}
-        </Text>
-        <Text style={{ color: '#B2EBF2', fontSize: 14, marginTop: 5 }}>≈ $0.00 USD</Text>
-      </LinearGradient> */}
-
       {/* Tip Target Section */}
       {tipTarget ? (
         <LinearGradient
@@ -262,7 +243,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    // backgroundColor: '#6200ea', // Removed
     padding: 8,
     borderRadius: 12,
     marginRight: 10,
