@@ -146,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.publicKey;
 
         const channel = supabase
-            .channel('public:tip_goals')
+            .channel('auth_tip_goals')
             .on(
                 'postgres_changes',
                 {
@@ -162,7 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .subscribe();
 
         const tipsChannel = supabase
-            .channel('public:tips')
+            .channel('auth_tips_audio')
             .on(
                 'postgres_changes',
                 {

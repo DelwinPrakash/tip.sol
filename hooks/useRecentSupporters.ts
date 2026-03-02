@@ -21,7 +21,7 @@ export function useRecentSupporters(selectedAccount: Account | null) {
         if (!selectedAccount) return;
         try {
             setLoadingSupporters(true);
-            const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.address;
+            const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.publicKey;
 
             const { data, error } = await supabase
                 .from('tips')
@@ -91,7 +91,7 @@ export function useRecentSupporters(selectedAccount: Account | null) {
         const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.publicKey;
 
         const channel = supabase
-            .channel('public:tips')
+            .channel('recent_supporters_tips')
             .on(
                 'postgres_changes',
                 {
