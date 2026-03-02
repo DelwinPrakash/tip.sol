@@ -2,6 +2,7 @@ import { Account, useAuthorization } from '@/components/providers/AuthorizationP
 import { supabase } from '@/lib/supabase';
 import { alertAndLog } from '@/util/alertAndLog';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { useRouter, useSegments } from 'expo-router';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 interface UserProfile {
@@ -29,6 +30,7 @@ interface AuthContextType {
     updateTipTarget: (target: TipTarget | null) => Promise<void>;
     refreshProfile: () => Promise<void>;
     isLoading: boolean;
+    isProfileIncomplete: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +45,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [tipTarget, setTipTarget] = useState<TipTarget | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+
+    const segments = useSegments();
+    const router = useRouter();
 
     const loadProfile = useCallback(async ({ isRefresh = false } = {}) => {
         if (!isRefresh) setIsLoading(true);
@@ -54,11 +60,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     .eq('wallet_address', selectedAccount.publicKey)
                     .single();
 
-                if (error && error.code !== 'PGRST116') {
-                    console.error('Failed to load profile from Supabase', error);
-                }
+                if (error && error.code === 'PGRST116') {
+                    // Profile not found, create an empty one
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                            wallet_address: selectedAccount.publicKey,
+                            username: '',
+                            display_name: '',
+                            bio: '',
+                            avatar_url: '',
+                        });
 
-                if (data) {
+                    if (insertError) {
+                        console.error('Failed to create new profile', insertError);
+                    }
+
+                    setIsProfileIncomplete(true);
+                    setUserProfile({
+                        name: '',
+                        bio: '',
+                        avatarUri: '',
+                    });
+                    setTipTarget(null);
+                } else if (error) {
+                    console.error('Failed to load profile from Supabase', error);
+                } else if (data) {
+                    const incomplete = !data.username || data.username.trim() === '';
+                    setIsProfileIncomplete(incomplete);
+
                     setUserProfile({
                         name: data.username || data.display_name || '',
                         bio: data.bio || '',
@@ -91,10 +121,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 } else {
                     setUserProfile(null);
                     setTipTarget(null);
+                    setIsProfileIncomplete(false);
                 }
             } else {
                 setUserProfile(null);
                 setTipTarget(null);
+                setIsProfileIncomplete(false);
             }
         } catch (error) {
             console.error('Failed to load profile', error);
@@ -106,6 +138,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         loadProfile();
     }, [loadProfile]);
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        const inOnboardingGroup = segments[0] === 'onboarding';
+
+        if (selectedAccount && isProfileIncomplete && !inOnboardingGroup) {
+            router.replace('/onboarding');
+        } else if (selectedAccount && !isProfileIncomplete && inOnboardingGroup) {
+            router.replace('/(tabs)');
+        } else if (!selectedAccount && inOnboardingGroup) {
+            router.replace('/');
+        }
+    }, [selectedAccount, isProfileIncomplete, segments, isLoading, router]);
 
     const updateProfile = async (profile: UserProfile) => {
         if (!selectedAccount) return;
@@ -122,6 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             if (error) throw error;
             setUserProfile(profile);
+            setIsProfileIncomplete(false);
         } catch (error) {
             console.error('Failed to save profile', error);
             throw error;
@@ -192,6 +239,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
             setUserProfile(null);
             setTipTarget(null);
+            setIsProfileIncomplete(false);
         } catch (err: any) {
             alertAndLog(
                 'Error during disconnect',
@@ -214,6 +262,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 updateTipTarget,
                 refreshProfile: () => loadProfile({ isRefresh: true }),
                 isLoading,
+                isProfileIncomplete,
             }}
         >
             {children}

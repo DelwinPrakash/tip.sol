@@ -1,17 +1,16 @@
-import '../global.css';
-import 'react-native-get-random-values';
-import 'react-native-reanimated';
+import { AuthorizationProvider } from '@/components/providers/AuthorizationProvider';
+import { ConnectionProvider, RPC_ENDPOINT } from '@/components/providers/ConnectionProvider';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { clusterApiUrl } from '@solana/web3.js';
+import { Buffer } from 'buffer';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import 'react-native-get-random-values';
+import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '../context/AuthContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ConnectionProvider } from '@/components/providers/ConnectionProvider';
-import { AuthorizationProvider } from '@/components/providers/AuthorizationProvider';
-import { RPC_ENDPOINT } from '@/components/providers/ConnectionProvider';
-import {clusterApiUrl} from '@solana/web3.js';
-import { Buffer } from 'buffer';
+import '../global.css';
 global.Buffer = Buffer;
 
 export const unstable_settings = {
@@ -23,12 +22,13 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ConnectionProvider config={{commitment: 'processed'}} endpoint={clusterApiUrl(RPC_ENDPOINT)}>
+      <ConnectionProvider config={{ commitment: 'processed' }} endpoint={clusterApiUrl(RPC_ENDPOINT)}>
         <AuthorizationProvider>
           <AuthProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
               <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false, presentation: 'formSheet' }} />
                 <Stack.Screen name="pay/[username]" options={{ presentation: 'card', title: 'Pay' }} />
               </Stack>
               <StatusBar style="auto" />
