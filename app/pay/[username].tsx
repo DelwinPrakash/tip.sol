@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { transact, Web3MobileWallet } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { createAudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -186,6 +187,12 @@ export default function PayScreen() {
                 }
 
                 setIsSuccess(true);
+                try {
+                    const player = createAudioPlayer(require('../../assets/audio/pay.mp3'));
+                    player.play();
+                } catch (e) {
+                    console.error('Failed to play sound', e);
+                }
                 setTimeout(() => {
                     router.replace('/(tabs)');
                 }, 3000);

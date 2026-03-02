@@ -2,6 +2,7 @@ import { Account, useAuthorization } from '@/components/providers/AuthorizationP
 import { supabase } from '@/lib/supabase';
 import { alertAndLog } from '@/util/alertAndLog';
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
+import { createAudioPlayer } from 'expo-audio';
 import { useRouter, useSegments } from 'expo-router';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
@@ -160,8 +161,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             )
             .subscribe();
 
+        const tipsChannel = supabase
+            .channel('public:tips')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'tips',
+                    filter: `receiver_address=eq.${pubkeyStr}`,
+                },
+                async () => {
+                    try {
+                        const player = createAudioPlayer(require('../assets/audio/receive.mp3'));
+                        player.play();
+                    } catch (e) {
+                        console.error('Failed to play receive sound', e);
+                    }
+                }
+            )
+            .subscribe();
+
         return () => {
             supabase.removeChannel(channel);
+            supabase.removeChannel(tipsChannel);
         };
     }, [selectedAccount, loadProfile]);
 
