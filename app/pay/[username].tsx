@@ -25,7 +25,7 @@ export default function PayScreen() {
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [recipientProfile, setRecipientProfile] = useState<{ name: string, bio: string, avatar: string } | null>(null);
-    const [activeGoal, setActiveGoal] = useState<{ title: string, description: string, targetAmount: number } | null>(null);
+    const [activeGoal, setActiveGoal] = useState<{ title: string, description: string, targetAmount: number, amountRaised: number } | null>(null);
     const [isFetchingData, setIsFetchingData] = useState(true);
 
     const recipientAddress = Array.isArray(address) ? address[0] : address;
@@ -74,7 +74,8 @@ export default function PayScreen() {
                     setActiveGoal({
                         title: goalData.title,
                         description: goalData.description || '',
-                        targetAmount: Number(goalData.target_amount)
+                        targetAmount: Number(goalData.target_amount),
+                        amountRaised: Number(goalData.amount_raised) || 0
                     });
                 }
             } catch (error) {
@@ -148,8 +149,6 @@ export default function PayScreen() {
                 if (confirmation.value.err) {
                     throw new Error('Transaction failed to confirm');
                 }
-
-                console.log('Signature:', signature);
 
                 // Log to Supabase
                 const { error: dbError } = await supabase.from('tips').insert({
@@ -265,6 +264,10 @@ export default function PayScreen() {
                                     <TextNative style={{ color: '#E0F7FA', fontSize: 12 }}>Target Goal</TextNative>
                                     <TextNative style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>{activeGoal.targetAmount} SOL</TextNative>
                                 </ViewNative>
+                                <ViewNative>
+                                    <TextNative style={{ color: '#E0F7FA', fontSize: 12, textAlign: 'right' }}>Amount Raised</TextNative>
+                                    <TextNative style={{ fontSize: 18, fontWeight: 'bold', color: '#4ade80', textAlign: 'right' }}>{activeGoal.amountRaised} SOL</TextNative>
+                                </ViewNative>
                             </ViewNative>
                         </LinearGradient>
                     ) : null}
@@ -311,7 +314,7 @@ export default function PayScreen() {
                         }}
                     >
                         <TextNative style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>
-                            {loading ? 'Sending...' : `Send ${amount ? amount : '0'} SOL & Mint Badge`}
+                            {loading ? 'Sending...' : `Send ${amount ? amount : '0'} SOL`}
                         </TextNative>
                     </TouchableOpacityNative>
 
