@@ -76,7 +76,7 @@ export default function ScanScreen() {
   if (!selectedAccount) {
     return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.background }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>Welcome to SolTip</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: theme.text }}>Welcome to Tip.sol</Text>
             <Text style={{ textAlign: 'center', marginBottom: 30, color: theme.text }}>Connect your Solana wallet to start receiving tips.</Text>
             <TouchableOpacity
                 onPress={handleConnect}
@@ -106,7 +106,7 @@ export default function ScanScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.overlay}>
-            <Text style={{ color: 'white', textAlign: 'center', marginTop: 50, fontSize: 18, fontWeight: 'bold' }}>Scan SolTip QR Code</Text>
+            <Text style={{ color: 'white', textAlign: 'center', marginTop: 50, fontSize: 18, fontWeight: 'bold' }}>Scan Tip.sol QR Code</Text>
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <View style={{ width: 250, height: 250, borderWidth: 2, borderColor: 'white', borderRadius: 20 }} />
             </View>
