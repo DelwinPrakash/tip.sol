@@ -85,5 +85,31 @@ export function useRecentSupporters(selectedAccount: Account | null) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedAccount?.address]);
 
+    useEffect(() => {
+        if (!selectedAccount) return;
+
+        const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.publicKey;
+
+        const channel = supabase
+            .channel('public:tips')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'tips',
+                    filter: `receiver_address=eq.${pubkeyStr}`,
+                },
+                () => {
+                    fetchSupporters();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [selectedAccount, fetchSupporters]);
+
     return { supporters, loadingSupporters, fetchSupporters };
 }
