@@ -25,9 +25,19 @@ export default function ScanScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, padding: 20, justifyContent: 'center', alignItems: 'center' }]}>
         <Text style={[styles.message, { color: theme.text }]}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="grant permission" />
+        <TouchableOpacity
+            onPress={requestPermission}
+            style={{
+              backgroundColor: theme.tint,
+              padding: 15,
+              borderRadius: 10,
+              alignItems: 'center'
+            }}
+        >
+            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Grant Permission</Text>
+        </TouchableOpacity>
       </View>
     );
   }
