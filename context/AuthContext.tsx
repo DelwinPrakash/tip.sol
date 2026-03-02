@@ -140,6 +140,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [loadProfile]);
 
     useEffect(() => {
+        if (!selectedAccount) return;
+
+        const pubkeyStr = selectedAccount.publicKey.toBase58 ? selectedAccount.publicKey.toBase58() : selectedAccount.publicKey;
+
+        const channel = supabase
+            .channel('public:tip_goals')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'tip_goals',
+                    filter: `wallet_address=eq.${pubkeyStr}`,
+                },
+                () => {
+                    loadProfile({ isRefresh: true });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [selectedAccount, loadProfile]);
+
+    useEffect(() => {
         if (isLoading) return;
 
         const inOnboardingGroup = segments[0] === 'onboarding';
