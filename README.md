@@ -1,50 +1,85 @@
-# Welcome to your Expo app 👋
+# Tip.sol 🪙
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+### *The decentralized, zero-friction tipping platform for creators on Solana.*
 
-## Get started
+**Tip.sol** is a mobile-first, decentralized tipping application built exclusively on the Solana blockchain. It empowers anyone to receive global, instant, and borderless tips with **zero middleman fees**. By leveraging the speed and incredibly low transaction costs of Solana, Tip.sol provides a seamless Web3 alternative to traditional creator-support platforms.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## ✨ Features
 
-2. Start the app
+- **Seamless Wallet Integration:** Connect existing crypto wallets (like Phantom or Solflare) instantly using the Solana Mobile Wallet Adapter. No usernames, passwords, or KYC.
+- **Tip Targets (Goals):** Creators can set specific Tip Goals (e.g., "Save for a New Mic") with a defined SOL target and progress bar.
+- **Frictionless QR Code Payments:** Every profile generates a unique QR code. Supporters can easily scan it in-app to send SOL in seconds.
+- **Personalized Web3 Profiles:** Customize your profile with an Emoji Avatar, display name, and bio, all securely synced via Supabase.
+- **Transparent Transaction History:** Keep track of all tips sent and received, view timestamps and messages, and verify transactions on the blockchain.
+- **Delightful UX/UI:** Enjoy a premium feel with fluid Expo animations, Nativewind styling, haptic feedback, and celebratory audio chimes upon successful payments.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🛠 Tech Stack
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Frontend Mobile App:** React Native & Expo
+- **Styling:** Nativewind (TailwindCSS for React Native)
+- **Blockchain Integration:** `@solana/web3.js` for on-chain interactions
+- **Wallet Connection:** `@solana-mobile/mobile-wallet-adapter-protocol` for native mobile wallet deep-linking and transaction signing
+- **Backend & Database:** Supabase (PostgreSQL) for profile metadata, goal tracking, and off-chain transaction logging
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 🚀 Get Started
 
-When you're ready, run:
+Follow these steps to run the application locally.
+
+### 1. Prerequisites
+
+- Node.js (v18 or newer recommended)
+- A Solana Wallet app installed on your mobile device or emulator (e.g., Phantom, Solflare, or standard "faked" wallet for Android emulator)
+
+### 2. Install dependencies
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. Environment Setup
 
-## Learn more
+Create a `.env` file in the root directory and configure your Supabase credentials:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 4. Create a Development Build
 
-## Join the community
+To interact with native mobile wallets via the Mobile Wallet Adapter, you **must use a development build** or a standalone app, rather than Expo Go. 
 
-Join our community of developers creating universal apps.
+First, install the `expo-dev-client`:
+```bash
+npx expo install expo-dev-client
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Then, run one of the following commands to create and start a development build:
+
+**For Android:**
+```bash
+npx expo run:android
+```
+
+**For iOS (requires macOS):**
+```bash
+npx expo run:ios
+```
+
+*Note: For mobile wallet adapter features, testing on a physical device or a properly configured emulator with a wallet app (like Phantom) installed is recommended.*
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License.
