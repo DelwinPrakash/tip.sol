@@ -1,13 +1,13 @@
-import {Connection, type ConnectionConfig} from '@solana/web3.js';
+import { Connection, type ConnectionConfig } from '@solana/web3.js';
 import React, {
+  createContext,
   type FC,
   type ReactNode,
-  useMemo,
-  createContext,
   useContext,
+  useMemo,
 } from 'react';
 
-export const RPC_ENDPOINT = 'devnet';
+export const RPC_ENDPOINT = process.env.EXPO_PUBLIC_SOLANA_RPC_URL || 'mainnet-beta';
 
 export interface ConnectionProviderProps {
   children: ReactNode;
@@ -18,7 +18,7 @@ export interface ConnectionProviderProps {
 export const ConnectionProvider: FC<ConnectionProviderProps> = ({
   children,
   endpoint,
-  config = {commitment: 'confirmed'},
+  config = { commitment: 'confirmed' },
 }) => {
   const connection = useMemo(
     () => new Connection(endpoint, config),
@@ -26,7 +26,7 @@ export const ConnectionProvider: FC<ConnectionProviderProps> = ({
   );
 
   return (
-    <ConnectionContext.Provider value={{connection}}>
+    <ConnectionContext.Provider value={{ connection }}>
       {children}
     </ConnectionContext.Provider>
   );

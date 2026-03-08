@@ -12,7 +12,6 @@ import { PublicKey } from '@solana/web3.js';
 import { toUint8Array } from 'js-base64';
 import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { RPC_ENDPOINT } from './ConnectionProvider';
 
 const AUTHORIZATION_STORAGE_KEY = 'authorization_state';
 
@@ -164,7 +163,7 @@ function AuthorizationProvider(props: { children: ReactNode }) {
           identity: APP_IDENTITY,
         })
         : wallet.authorize({
-          cluster: RPC_ENDPOINT,
+          cluster: 'mainnet-beta',
           identity: APP_IDENTITY,
         }));
       return (await handleAuthorizationResult(authorizationResult, authorization?.selectedAccount))

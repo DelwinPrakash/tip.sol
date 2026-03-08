@@ -101,7 +101,7 @@ export default function PayScreen() {
 
         setLoading(true);
         try {
-            const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+            const connection = new Connection(process.env.EXPO_PUBLIC_SOLANA_RPC_URL || clusterApiUrl('mainnet-beta'), 'confirmed');
             const recipientPublicKey = new PublicKey(recipientAddress);
             const lamports = parseFloat(amount) * LAMPORTS_PER_SOL;
 

@@ -2,7 +2,6 @@ import { AuthorizationProvider } from '@/components/providers/AuthorizationProvi
 import { ConnectionProvider, RPC_ENDPOINT } from '@/components/providers/ConnectionProvider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { clusterApiUrl } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,7 +21,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ConnectionProvider config={{ commitment: 'processed' }} endpoint={clusterApiUrl(RPC_ENDPOINT)}>
+      <ConnectionProvider config={{ commitment: 'processed' }} endpoint={RPC_ENDPOINT}>
         <AuthorizationProvider>
           <AuthProvider>
             <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
